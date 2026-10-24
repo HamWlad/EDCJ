@@ -71,6 +71,7 @@ The journal folder is found automatically (Steam/Proton, Flatpak, Lutris, Wine, 
 
 Pure Python standard library (`http.server`, `sqlite3`), vanilla JavaScript. Modules live in `journey/`, the interface in `web/`. See [README.de.md](README.de.md) ("Aufbau", "Erweitern") for a module overview. Contributions and bug reports are welcome – please attach no personal data (journals, `data/`).
 
+Build with claude.ai
 ## License
 
 [MIT](LICENSE) © 2026 HamWlad. The bundled font *Antonio* is licensed under the SIL Open Font License 1.1 (`web/fonts/OFL.txt`).
