@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EDCJ {{VERSION}} - Elite Dangerous Commander's Journey</title>
+<link rel="stylesheet" href="/static/style.css">
+<script>try{var __s=JSON.parse(localStorage.getItem("edl_set")||"{}");if(__s.theme)document.documentElement.dataset.theme=__s.theme;}catch(e){}</script>
+</head>
+<body>
+<div class="frame">
+  <div class="elbow-t"></div>
+  <div class="head">
+    <div class="seg o" style="width:110px"></div>
+    <div class="seg l" style="width:46px"></div>
+    <div class="seg b" style="width:26px"></div>
+    <div class="title"><span>EDCJ &middot; Elite Dangerous Commander's Journey <small class="mut" style="font-size:.6em">v{{VERSION}}</small></span><small id="stardate">Sternzeit --</small></div>
+    <button id="fsbtn" class="fsb" title="Vollbild an/aus" aria-label="Vollbild an/aus" hidden>&#x26F6;</button>
+    <div class="cap"></div>
+  </div>
+
+  <div class="side">
+    <div class="btn" style="--c:var(--orange);--h:58px">EDCJ</div>
+    <div id="grpbtns" style="display:contents"></div>
+    <div id="legacytabs" hidden>
+    <button class="btn" data-tab="cockpit" style="--c:var(--orange)">Cockpit</button>
+    <button class="btn" data-tab="system" style="--c:var(--lilac)">System</button>
+    <button class="btn" data-tab="sana"   style="--c:var(--sky)">Diplomatie</button>
+    <button class="btn" data-tab="bodies" style="--c:var(--blue)">Planeten</button>
+    <button class="btn" data-tab="market" style="--c:var(--tan)">Markt</button>
+    <button class="btn" data-tab="gear" style="--c:var(--peach)">Ausrüstung</button>
+    <button class="btn" data-tab="ana"    style="--c:var(--blue)">Analyse</button>
+    <button class="btn" data-tab="mining" style="--c:var(--tan)">Mining</button>
+    <button class="btn" data-tab="missions" style="--c:var(--orange)">Missionen</button>
+    <button class="btn" data-tab="maint" style="--c:var(--red)">Wartung</button>
+    <button class="btn" data-tab="carrier" style="--c:var(--sky)">Fleet Carrier</button>
+    <button class="btn" data-tab="bgs" style="--c:var(--lilac)">Fraktions-Verlauf</button>
+    <button class="btn" data-tab="bio" style="--c:var(--blue)">Bio-Atlas</button>
+    <button class="btn" data-tab="gaps" style="--c:var(--tan)">Lücken</button>
+    <button class="btn" data-tab="replay" style="--c:var(--peach)">Flugschreiber</button>
+    <button class="btn" data-tab="akte" style="--c:var(--lilac)">Personalakte</button>
+    <button class="btn" data-tab="lmis" style="--c:var(--lilac)">Journey-Missionen</button>
+    <button class="btn" data-tab="lmil" style="--c:var(--lilac)">Meilensteine</button>
+    <button class="btn" data-tab="kampf"  style="--c:var(--red)">Kampf</button>
+    <button class="btn" data-tab="flotte" style="--c:var(--sky)">Flotte</button>
+    <button class="btn" data-tab="karriere" style="--c:var(--lilac)">Karriere</button>
+    <button class="btn" data-tab="bilanz" style="--c:var(--orange)">Bilanz</button>
+    <button class="btn" data-tab="ware"   style="--c:var(--lilac)">Ware</button>
+    <button class="btn" data-tab="notes"  style="--c:var(--sky)">Notizen</button>
+    <button class="btn" data-tab="log"    style="--c:var(--tan)">Captains Log</button>
+    <button class="btn" data-tab="search" style="--c:var(--sky)">Suche</button>
+    <button class="btn" data-tab="all"    style="--c:var(--sky)">Alle Daten</button>
+    <button class="btn" data-tab="stats"  style="--c:var(--peach)">Statistik</button>
+    <button class="btn" data-tab="map"    style="--c:var(--sky)">Reisekarte</button>
+    <button class="btn" data-tab="hot"    style="--c:var(--tan)">Hotspots</button>
+    <button class="btn" data-tab="off"    style="--c:var(--red)">Offline</button>
+    <button class="btn" data-tab="settings" style="--c:var(--lilac)">Settings</button>
+    </div>
+    <div class="btn fill" style="--c:var(--red)"></div>
+    <div class="btn" style="--c:var(--lilac);--h:30px" id="clock">--:--:--</div>
+  </div>
+
+  <div class="main">
+    <div class="chips subnav" id="subnav"></div>
+    <div class="grid tab" id="tab-cockpit">
+      <section class="panel span3" style="--c:var(--tan)" id="ck-lagebox">
+        <div class="ph"><span id="ck-lagetitle">Lage</span><span id="ck-lagemeta">&nbsp;</span></div>
+        <div class="pb" id="ck-lage"><div class="empty">Lade ...</div></div>
+      </section>
+      <section class="panel span2" style="--c:var(--orange)">
+        <div class="ph"><span>Cockpit: Zustand</span><span id="ckmeta">&nbsp;</span></div>
+        <div class="pb" id="ck-state"><div class="empty">Lade ...</div></div>
+      </section>
+      <section class="panel" style="--c:var(--sky)">
+        <div class="ph"><span>Treibstoff &amp; Energie</span><span>&nbsp;</span></div>
+        <div class="pb" id="ck-fuel"></div>
+      </section>
+      <section class="panel span3" style="--c:var(--peach)">
+        <div class="ph"><span>Fracht &amp; beste Verkaufsorte</span><span><label>Reichweite <select id="ckrange" class="sel" aria-label="Reichweite" style="margin:0"><option value="20">20 Ly</option><option value="50">50 Ly</option><option value="100">100 Ly</option><option value="0">unbegrenzt</option></select></label></span></div>
+        <div class="pb" id="ck-cargo"></div>
+      </section>
+      <section class="panel span3" style="--c:var(--lilac)">
+        <div class="ph"><span>Geplante Route</span><span>&nbsp;</span></div>
+        <div class="pb" id="ck-route"></div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-stats" hidden>
+      <div class="wins"><span>Tempo-Fenster:</span><button data-w="15">15 Min</button><button data-w="30">30 Min</button><button data-w="60">60 Min</button><button data-w="120">120 Min</button></div>
+      <section class="panel" style="--c:var(--orange)">
+        <div class="ph"><span>Netto pro Stunde</span><span>Session</span></div>
+        <div class="pb"><div class="big"><span id="net">-</span><span class="u">Cr/h</span></div>
+          <div class="sub" id="netsub">&nbsp;</div></div>
+      </section>
+      <section class="panel" style="--c:var(--lilac)">
+        <div class="ph"><span>Brutto pro Stunde</span><span>Einnahmen</span></div>
+        <div class="pb"><div class="big"><span id="gross">-</span><span class="u">Cr/h</span></div>
+          <div class="sub" id="grosssub">&nbsp;</div></div>
+      </section>
+      <section class="panel" style="--c:var(--blue)">
+        <div class="ph"><span>Aktuelles Tempo</span><span id="winlbl">60 Min</span></div>
+        <div class="pb"><div class="big"><span id="pace">-</span><span class="u">Cr/h</span></div>
+          <div class="sub" id="pacesub">&nbsp;</div></div>
+      </section>
+
+      <section class="panel" style="--c:var(--sky)">
+        <div class="ph"><span>Navigation</span><span>Hyperraum</span></div>
+        <div class="pb"><div class="rows">
+          <div class="row"><span>Sprünge</span><span id="jumps">-</span></div>
+          <div class="row"><span>Strecke</span><span id="dist">-</span></div>
+          <div class="row"><span>Ø pro Sprung</span><span id="avg">-</span></div>
+          <div class="row"><span>Sprünge pro Stunde</span><span id="jph">-</span></div>
+          <div class="row"><span id="jwinlbl">Tempo 60 Min</span><span id="jwin">-</span></div>
+          <div class="row"><span>Trägersprünge</span><span id="cj">-</span></div>
+        </div></div>
+      </section>
+      <section class="panel" style="--c:var(--peach)">
+        <div class="ph"><span>Einsatzdauer</span><span id="live">&nbsp;</span></div>
+        <div class="pb"><div class="rows">
+          <div class="row"><span>Spielzeit</span><span id="elapsed">-</span></div>
+          <div class="row"><span>Start</span><span id="start">-</span></div>
+          <div class="row"><span>Commander</span><span id="cmdr">-</span></div>
+          <div class="row"><span>Einnahmen</span><span id="inc">-</span></div>
+          <div class="row"><span>Ausgaben</span><span id="exp">-</span></div>
+          <div class="row"><span>Netto gesamt</span><span id="netall">-</span></div>
+        </div></div>
+      </section>
+      <section class="panel" style="--c:var(--red)">
+        <div class="ph"><span>Kontostand</span><span>Status.json</span></div>
+        <div class="pb" id="balance"><div class="empty">Keine Daten</div></div>
+      </section>
+
+      <section class="panel span2" style="--c:var(--tan)">
+        <div class="ph"><span>Einnahmen und Ausgaben nach Kategorie</span><span>Credits</span></div>
+        <div class="pb" id="cats"><div class="empty">Noch keine Credit-Ereignisse in dieser Session</div></div>
+      </section>
+      <section class="panel" style="--c:var(--lilac)">
+        <div class="ph"><span>Systemmeldung</span><span>&nbsp;</span></div>
+        <div class="pb"><div class="rows">
+          <div class="row"><span>Journal</span><span id="jname" style="font-size:14px;overflow:hidden;text-overflow:ellipsis">-</span></div>
+          <div class="row"><span>Verbindung</span><span id="conn">-</span></div>
+          <div class="row"><span>Aktualisiert</span><span id="upd">-</span></div>
+        </div></div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-hot" hidden>
+      <section class="panel span3" style="--c:var(--tan)">
+        <div class="ph"><span>Hotspots in Ringen (aus deinen Scans)</span><span id="hotmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2" style="flex-wrap:wrap">
+            <input id="hotq" class="sq" style="flex:1;min-width:200px;margin:0" list="hotmin" placeholder="Mineral wählen oder tippen, z. B. Platin, Painite, Tritium" autocomplete="off" aria-label="Mineral">
+            <datalist id="hotmin"></datalist>
+            <input id="hotref" class="sq" style="flex:1;min-width:200px;margin:0" list="hotsys" placeholder="Bezugssystem (leer = aktuelles System)" autocomplete="off" aria-label="Bezugssystem">
+            <datalist id="hotsys"></datalist>
+            <button class="xbtn" id="hotcur">Aktuelles System</button>
+          </div>
+          <div class="row2" style="flex-wrap:wrap;margin-top:8px">
+            <label class="mut">Umkreis <select id="hotrange" class="sel" style="margin:0"><option value="20">20 Ly</option><option value="50">50 Ly</option><option value="100">100 Ly</option><option value="200">200 Ly</option><option value="500">500 Ly</option><option value="0" selected>unbegrenzt</option></select></label>
+            <label class="mut">Ringtyp <select id="hotcls" class="sel" style="margin:0"><option value="">alle</option></select></label>
+            <label class="mut">Reserven <select id="hotres" class="sel" style="margin:0"><option value="">alle</option></select></label>
+            <label class="mut">Sortierung <select id="hotsort" class="sel" style="margin:0"><option value="dist">Entfernung</option><option value="count">Anzahl Hotspots</option><option value="new">zuletzt gescannt</option></select></label>
+          </div>
+          <div class="mut" id="hotctx" style="margin:8px 0">&nbsp;</div>
+          <div id="hothid" style="margin-bottom:8px"></div>
+          <div class="tscroll" id="hotres2"><div class="empty">Lade Hotspots</div></div>
+        </div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-map" hidden>
+      <section class="panel span3" style="--c:var(--sky)">
+        <div class="ph"><span>Reisekarte</span><span id="mapmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2"><select id="mapproj"><option value="xz">Draufsicht (X/Z)</option><option value="xy">Seitenansicht (X/Y)</option></select>
+            <button class="xbtn" id="mapreset">Ansicht zurücksetzen</button>
+            <span class="mut" style="font-size:15px">Mausrad = Zoom, Ziehen = Verschieben. Nur besuchte Systeme mit bekannten Koordinaten.</span></div>
+          <canvas id="mapcv" style="width:100%;height:420px;background:#0008;border-radius:8px;touch-action:none"></canvas>
+          <div class="mut" id="maptip" style="min-height:22px">&nbsp;</div>
+        </div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-system" hidden>
+      <section class="panel span3" style="--c:var(--blue)">
+        <div class="ph"><span>Aktuelles System &middot; Fraktionen</span><span id="sysname">-</span></div>
+        <div class="pb"><div class="sysgrid">
+          <div class="rows" id="sysinfo"></div>
+          <div id="factions"><div class="empty">Warte auf Daten</div></div>
+        </div></div>
+      </section>
+
+      <section class="panel span3" style="--c:var(--lilac)">
+        <div class="ph"><span>Ringe &amp; Hotspots</span><span id="ringsum">-</span></div>
+        <div class="pb" id="ringlist"><div class="empty">Noch keine Ringe gescannt</div></div>
+      </section>
+
+      <section class="panel span3" style="--c:var(--sky)">
+        <div class="ph"><span>Stationen &amp; Siedlungen</span><span id="stnmeta">-</span></div>
+        <div class="pb" id="sysstn"><div class="empty">Warte auf Daten</div></div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-bodies" hidden>
+      <section class="panel span3" style="--c:var(--blue)">
+        <div class="ph"><span>Körper im System</span><span id="bsum">-</span></div>
+        <div class="pb" id="bodies"><div class="empty">Warte auf Daten</div></div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-all" hidden></div>
+    <div class="grid tab" id="tab-kampf" hidden></div>
+    <div class="grid tab" id="tab-mining" hidden></div>
+    <div class="grid tab" id="tab-maint" hidden>
+      <section class="panel span3" style="--c:var(--red)" id="ck-maintbox">
+        <div class="ph"><span>Wartung vor dem Flug</span><span id="ck-maintmeta">&nbsp;</span></div>
+        <div class="pb" id="ck-maint"><div class="empty">Lade ...</div></div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-missions" hidden></div>
+    <div class="grid tab" id="tab-carrier" hidden></div>
+    <div class="grid tab" id="tab-bgs" hidden></div>
+    <div class="grid tab" id="tab-bio" hidden></div>
+    <div class="grid tab" id="tab-gaps" hidden></div>
+    <div class="grid tab" id="tab-profil" hidden>
+      <section class="panel span3" style="--c:var(--red)">
+        <div class="ph"><span>Spielstil</span><span id="pfmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2" style="flex-wrap:wrap;gap:10px;align-items:center">
+            <label class="mut">Zeitraum <select id="pfweeks" class="sel" style="margin:0"><option value="1">1 Woche</option><option value="2">2 Wochen</option><option value="4">4 Wochen</option><option value="12" selected>12 Wochen</option><option value="26">26 Wochen</option><option value="52">52 Wochen</option><option value="0">alles</option></select></label>
+            <span class="mut" style="font-size:14px">Die Zeit wird in Zehn-Minuten-Blöcken aus deinen Journal-Ereignissen der Tätigkeit zugeordnet, die in dem Block überwog.</span>
+          </div>
+          <div id="pfmain" class="pfmain"></div>
+        </div>
+      </section>
+      <section class="panel span3" style="--c:var(--orange)">
+        <div class="ph"><span>Gewohnheiten</span><span id="pfhmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2" style="flex-wrap:wrap;gap:10px;align-items:center">
+            <label class="mut">Färbung <select id="pfmode" class="sel" style="margin:0"><option value="int">nach Spielzeit</option><option value="act">nach Tätigkeit</option></select></label>
+          </div>
+          <div id="pfheat"></div>
+        </div>
+      </section>
+      <section class="panel span3" style="--c:var(--lilac)">
+        <div class="ph"><span>Rekorde &amp; Serien</span><span id="pfrmeta">&nbsp;</span></div>
+        <div class="pb"><div id="pfrec" class="tscroll"></div></div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-shots" hidden>
+      <section class="panel span3" style="--c:var(--sky)">
+        <div class="ph"><span>Galerie</span><span id="shmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2" style="flex-wrap:wrap;gap:10px;align-items:center">
+            <input id="shq" class="sq" style="flex:1;min-width:220px;margin:0" placeholder="Suchen: System, Körper, Notiz, Schlagwort" autocomplete="off" aria-label="Galerie durchsuchen">
+            <button class="xbtn" id="shfav" style="font-size:14px">&#9733; Nur Favoriten</button>
+            <button class="xbtn" id="shre" style="font-size:14px" title="Fehlende Bilder im Spielordner erneut suchen">Neu suchen</button>
+          </div>
+          <div id="shtags" class="chips" style="margin:8px 0"></div>
+          <div id="shgrid" class="shgrid"></div>
+          <div id="shinfo" class="mut" style="margin-top:14px;font-size:14px"></div>
+          <div class="row2" style="flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px">
+            <input id="shdir" class="sq" style="flex:1;min-width:260px;margin:0" placeholder="Bilderordner des Spiels (leer = automatisch suchen)" autocomplete="off" aria-label="Bilderordner">
+            <button class="xbtn" id="shdirsave" style="font-size:14px">Ordner speichern</button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-akte" hidden></div>
+    <div class="grid tab" id="tab-lmil" hidden></div>
+    <div class="grid tab" id="tab-lmis" hidden>
+      <section class="panel span3" style="--c:var(--lilac)">
+        <div class="ph"><span>Journey-Missionen</span><span id="lmmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2" style="flex-wrap:wrap;gap:10px;align-items:center">
+            <select id="lmdiff" class="sel" aria-label="Schwierigkeit"><option value="leicht">leicht (5 DP)</option><option value="mittel" selected>mittel (12 DP)</option><option value="schwer">schwer (25 DP)</option></select>
+            <button class="xbtn" id="lmnew" style="background:var(--lilac)">Neue Zufallsmission</button>
+            <span class="mut" id="lminfo" style="font-size:15px">Fortschritt zählt erst ab dem Moment, in dem die Mission erscheint.</span>
+          </div>
+          <div id="lmact" style="margin-top:10px"></div>
+        </div>
+      </section>
+      <section class="panel span3" style="--c:var(--sky)">
+        <div class="ph"><span>Archiv</span><span>&nbsp;</span></div>
+        <div class="pb" id="lmarc"></div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-replay" hidden>
+      <section class="panel span3" style="--c:var(--peach)">
+        <div class="ph"><span>Flugschreiber</span><span id="rpmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2" style="flex-wrap:wrap;gap:10px;align-items:center">
+            <select id="rpsel" class="sel" aria-label="Session"></select>
+            <button class="xbtn" id="rpplay" style="background:var(--peach)">▶ Abspielen</button>
+            <select id="rpspd" class="sel" aria-label="Tempo"><option value="1">1 min/s</option><option value="5" selected>5 min/s</option><option value="15">15 min/s</option><option value="60">60 min/s</option></select>
+            <b id="rptime" class="mut">-</b>
+          </div>
+          <input type="range" id="rpbar" min="0" max="1000" value="0" style="width:100%;margin:10px 0" aria-label="Zeitleiste">
+          <canvas id="rpmark" height="26" style="width:100%;display:block"></canvas>
+          <div class="twocol" style="margin-top:8px">
+            <canvas id="rpcv" style="width:100%;height:380px;background:#0a0a0a;display:block"></canvas>
+            <div><div id="rpkpi" class="mut" style="margin-bottom:6px"></div><div id="rplist" class="tscroll" style="max-height:340px"></div></div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-karriere" hidden></div>
+    <div class="grid tab" id="tab-bilanz" hidden></div>
+    <div class="grid tab" id="tab-flotte" hidden></div>
+    <div class="grid tab" id="tab-log" hidden>
+      <section class="panel span3" style="--c:var(--tan)">
+        <div class="ph"><span>Captain's Log</span><span id="logmeta">-</span></div>
+        <div class="pb"><div class="logscroll" id="logbody"><div class="empty">Lade Logbuch</div></div></div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-market" hidden>
+      <section class="panel span3" style="--c:var(--orange)">
+        <div class="ph"><span>Lokaler Markt</span><span id="mkmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2">
+            <select id="mkst" class="sel" aria-label="Station"></select>
+            <select id="mksnap" class="sel" aria-label="Stand"></select>
+            <label class="mut"><input type="checkbox" id="mkall"> alle gespeicherten Stationen</label>
+            <label class="mut">Eigene Menge (t) <input id="mkqty" class="sq" type="number" min="0" step="1" style="width:110px;margin:0" placeholder="Frachtraum" aria-label="Eigene Menge in Tonnen" title="Leer = Frachtraum des aktuellen Schiffs"></label>
+            <label class="mut">Reichweite Gegenstelle <select id="mkrange" class="sel" aria-label="Reichweite Gegenstelle" style="margin:0"><option value="20">20 Ly</option><option value="50">50 Ly</option><option value="100">100 Ly</option><option value="0">unbegrenzt</option></select></label>
+            <datalist id="mkwl"></datalist><input id="mkq" class="sq" list="mkwl" autocomplete="off" style="flex:1;min-width:200px;margin:0" type="search" placeholder="Ware wählen oder tippen ..." aria-label="Ware filtern">
+          </div>
+          <div class="tscroll" id="mkbody"><div class="empty">Lade Markt</div></div>
+        </div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-gear" hidden>
+      <section class="panel span3" style="--c:var(--blue)">
+        <div class="ph"><span>Ausrüstung: Module &amp; Schiffe zum Kauf</span><span id="mdmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2">
+            <select id="mdscope" class="sel" aria-label="Umfang"><option value="all">Alle Stationen (mit Reichweite)</option><option value="station">Gewählte Station</option></select>
+            <select id="mdst" class="sel" aria-label="Station"></select>
+            <label class="mut">Reichweite <select id="mdrange" class="sel" aria-label="Reichweite" style="margin:0"><option value="20">20 Ly</option><option value="50">50 Ly</option><option value="100">100 Ly</option><option value="0">unbegrenzt</option></select></label>
+            <select id="mdkind" class="sel" aria-label="Art"><option value="m">Nur Module</option><option value="s">Schiffe (laut Shipyard.json, evtl. unvollständig)</option><option value="">Module &amp; Schiffe</option></select>
+            <datalist id="mdwl"></datalist><input id="mdq" class="sq" list="mdwl" autocomplete="off" style="flex:1;min-width:200px;margin:0" type="search" placeholder="Modul wählen oder tippen, z. B. Schildgenerator 5A ..." aria-label="Modul">
+          </div>
+          <div class="tscroll" id="mdbody"><div class="empty">Lade</div></div>
+        </div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-ana" hidden>
+      <section class="panel span3" style="--c:var(--blue)">
+        <div class="ph"><span>Stationsanalyse: Datum, Menge, Preis</span><span id="anameta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2">
+            <select id="anast" class="sel" aria-label="Station"></select>
+            <select id="anarange" class="sel" aria-label="Zeitraum"><option value="1">Letzte 24 Stunden</option><option value="3">Letzte 3 Tage</option>
+              <option value="7">Letzte 7 Tage</option><option value="30">Letzte 30 Tage</option><option value="0" selected>Gesamter Zeitraum</option></select>
+            <datalist id="anawl"></datalist><input id="anaf" class="sq" list="anawl" autocomplete="off" style="flex:1;min-width:200px;margin:0" type="search" placeholder="Ware wählen oder tippen ..." aria-label="Ware filtern">
+          </div>
+          <div id="anadetail"></div>
+          <div class="tscroll" id="anatab"><div class="empty">Noch keine Marktdaten gespeichert.</div></div>
+        </div>
+      </section>
+      <section class="panel span3" style="--c:var(--sky)">
+        <div class="ph"><span>Preise durchsuchen: wo war welcher Preis zuletzt</span><span id="anasmeta">&nbsp;</span></div>
+        <div class="pb">
+          <input id="anaq" class="sq" type="search" placeholder="Ware, Station oder System ..." autocomplete="off" aria-label="Suchbegriff">
+          <div class="tscroll" id="anares"><div class="empty">Suchbegriff eingeben, zum Beispiel &bdquo;Platin&ldquo;. Ein Klick auf einen Treffer zeigt den Verlauf.</div></div>
+        </div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-sana" hidden>
+      <section class="panel span3" style="--c:var(--orange)">
+        <div class="ph"><span>Diplomatie: Fraktionen und Einfluss</span><span id="sanameta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2">
+            <input id="sasys" class="sq" style="flex:1;min-width:240px;margin:0" list="sasyslist" placeholder="System wählen oder tippen" autocomplete="off" aria-label="System">
+            <datalist id="sasyslist"></datalist>
+            <select id="sarange" class="sel" aria-label="Zeitraum"><option value="1">Letzte 24 Stunden</option><option value="3">Letzte 3 Tage</option>
+              <option value="7">Letzte 7 Tage</option><option value="30">Letzte 30 Tage</option><option value="0" selected>Gesamter Zeitraum</option></select>
+            <input id="saf" class="sq" style="width:240px;margin:0" type="search" placeholder="Fraktion filtern ..." aria-label="Fraktion filtern">
+          </div>
+          <div id="sadetail"></div>
+          <h4 class="ct">Veränderung: Jetzt-Wert gegenüber den Messwerten davor</h4>
+          <div class="tscroll" style="max-height:none" id="sasum"><div class="empty">Lade Daten</div></div>
+          <h4 class="ct">Alle Messwerte</h4>
+          <div class="tscroll" id="sahist"></div>
+        </div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-ware" hidden>
+      <section class="panel span3" id="sec-ware" style="--c:var(--lilac)">
+        <div class="ph"><span>Warenfinder</span><span id="waremeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2">
+            <input id="wq" class="sq" style="flex:1;min-width:240px;margin:0" list="warelist" placeholder="Ware wählen oder tippen, z. B. Platin" autocomplete="off" aria-label="Ware">
+            <datalist id="warelist"></datalist>
+            <div class="chips" style="margin:0"><button data-ws="sell">Bester Verkauf</button><button data-ws="buy">Günstigster Einkauf</button><button data-ws="new">Neuester Stand</button><button data-ws="dist">Nächste zuerst</button></div>
+          </div>
+          <div class="tscroll" id="wareres"><div class="empty">Ware auswählen. Es werden alle gespeicherten Stationen mit Preis und Stand angezeigt.</div></div>
+        </div>
+      </section>
+      <section class="panel span3" id="sec-trades" style="--c:var(--tan)">
+        <div class="ph"><span>Beste Trades aus den gespeicherten Daten</span><span id="trmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2">
+            <div class="chips" style="margin:0"><button data-ts="profit">Nach Gewinn pro t</button><button data-ts="total">Nach Gewinn pro Ladung</button><button data-ts="ly">Nach Gewinn pro Ly</button></div>
+            <label class="mut">Eigene Menge (t) <input id="trqty" class="sq" type="number" min="0" step="1" style="width:110px;margin:0" placeholder="Frachtraum" aria-label="Eigene Menge in Tonnen" title="Leer = Frachtraum des aktuellen Schiffs"></label>
+            <label class="mut">Kaufort in Reichweite <select id="trrange" class="sel" style="margin:0"><option value="20">20 Ly</option><option value="50">50 Ly</option><option value="100">100 Ly</option><option value="0">unbegrenzt</option></select></label>
+            <label class="mut">Strecke Kauf→Verkauf <select id="trleg" class="sel" style="margin:0"><option value="20">20 Ly</option><option value="50">50 Ly</option><option value="100">100 Ly</option><option value="0">unbegrenzt</option></select></label>
+            <label class="mut">Plattform <select id="trpad" class="sel" style="margin:0"><option value="loose">passende + unbekannte</option><option value="strict">nur sicher passende</option><option value="off">ignorieren</option></select></label>
+            <label class="mut">Preisalter <select id="trage" class="sel" style="margin:0"><option value="24">bis 24 Std.</option><option value="72">bis 3 Tage</option><option value="168">bis 7 Tage</option><option value="0">egal</option></select></label>
+          </div>
+          <div class="mut" id="trctx" style="margin:4px 0 8px">&nbsp;</div>
+          <div class="tscroll" id="trres"><div class="empty">Lade Trades</div></div>
+        </div>
+      </section>
+      <section class="panel span3" id="sec-loops" style="--c:var(--peach)">
+        <div class="ph"><span>Rundkurse (hin und zurück verdienen)</span><span id="lpmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="mut" style="margin:0 0 8px">Zwei gespeicherte Stationen, bei denen du in beide Richtungen eine andere Ware mit Gewinn transportieren kannst. Es gelten die Filter von oben (Reichweite, Strecke, Plattform, Preisalter).</div>
+          <div class="mut" id="lpctx" style="margin:4px 0 8px">&nbsp;</div>
+          <div class="tscroll" id="lpres"><div class="empty">Lade Rundkurse</div></div>
+        </div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-notes" hidden>
+      <section class="panel span3" style="--c:var(--sky)">
+        <div class="ph"><span>Eigene Notizen zu Stationen und Systemen</span><span id="ntmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2" style="flex-wrap:wrap">
+            <select id="ntkind" class="sel" style="margin:0"><option value="station">Station</option><option value="system">System</option></select>
+            <input id="ntname" class="sq" style="flex:1;min-width:220px;margin:0" list="ntlist" placeholder="Name wählen oder tippen" autocomplete="off" aria-label="Name">
+            <datalist id="ntlist"></datalist>
+          </div>
+          <textarea id="nttxt" class="sq" rows="3" style="width:100%;margin:8px 0;resize:vertical" maxlength="2000" placeholder="Notiz, z. B. gute Mission-Fraktion, Frachter-tauglich, Ingenieur in der Nähe"></textarea>
+          <div class="row2"><button class="xbtn" id="ntsave">Speichern</button><button class="xbtn" id="ntclear" style="background:var(--lilac)">Leeren</button>
+            <span class="mut" id="ntmsg" style="font-size:15px">&nbsp;</span></div>
+          <input id="ntq" class="sq" type="search" placeholder="Notizen filtern" autocomplete="off" style="margin:10px 0 0">
+          <div class="tscroll" id="ntres"><div class="empty">Noch keine Notizen.</div></div>
+        </div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-search" hidden>
+      <section class="panel span3" style="--c:var(--sky)">
+        <div class="ph"><span>Logbuch-Suche</span><span id="smeta">&nbsp;</span></div>
+        <div class="pb">
+          <input id="sq" class="sq" type="search" placeholder="Planet, Ring, System, Mineral ..." autocomplete="off" aria-label="Suchbegriff">
+          <div class="chips"><button data-q="Hotspots">Hotspots</button><button data-q="Ring gescannt">Ringe</button>
+            <button data-q="Abbaustandorte">Abbaustandorte</button><button data-q="Biologisch">Bio</button>
+            <button data-q="Geologisch">Geologie</button><button data-q="Gelandet">Landungen</button>
+            <button data-q="Erstentdeckung">Erstentdeckungen</button><button data-q="Mission">Missionen</button></div>
+          <div class="logscroll" id="sres"><div class="empty">Suchbegriff eingeben. Mehrere Wörter müssen alle vorkommen, zum Beispiel &bdquo;Hotspots Opal&ldquo;.</div></div>
+        </div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-settings" hidden>
+      <section class="panel span2" style="--c:var(--sky)">
+        <div class="ph"><span>Daten exportieren (CSV)</span><span>&nbsp;</span></div>
+        <div class="pb"><div class="row2" id="explinks" style="flex-wrap:wrap"></div>
+          <div class="mut" style="font-size:15px">Semikolon-getrennt, UTF-8 mit BOM, Dezimalkomma – direkt in Excel/LibreOffice zu öffnen.</div></div>
+      </section>
+      <section class="panel span2" style="--c:var(--orange)">
+        <div class="ph"><span>Datensicherung</span><span id="bakmeta">&nbsp;</span></div>
+        <div class="pb"><div class="row2" style="flex-wrap:wrap">
+          <a class="xbtn" id="bakdl" style="text-decoration:none;display:inline-block;background:var(--orange)" download href="/api/backup">Backup speichern</a>
+          <label class="xbtn" style="cursor:pointer;background:var(--red)">Backup wiederherstellen<input type="file" id="bakfile" accept=".zip" hidden></label></div>
+          <div class="mut" style="font-size:15px">Das Backup enthält die ganze Datenbank (Märkte, Karriere, Hotspots, Notizen …), dein Captain's Log und die Einstellungen als ZIP.
+            Beim Wiederherstellen wird vorher automatisch der aktuelle Stand als ZIP neben die Datenbank gelegt.</div></div>
+      </section>
+      <section class="panel span2" style="--c:var(--sky)" id="lanpanel">
+        <div class="ph"><span>Tablet &amp; Heimnetz</span><span id="lanmeta">&nbsp;</span></div>
+        <div class="pb">
+          <label class="mut" style="display:block;font-size:17px"><input type="checkbox" id="lanon"> Im Heimnetz freigeben (gilt nach dem nächsten Start von EDCJ)</label>
+          <div class="row2" style="flex-wrap:wrap;align-items:center"><span class="mut">Zugangscode</span>
+            <input id="lancode" class="sel" style="width:150px;margin:0" maxlength="32"><button class="xbtn" id="lansave" style="background:var(--sky)">Code speichern</button>
+            <button class="xbtn" id="lannew" style="background:var(--lilac)">Neuer Zufallscode</button></div>
+          <div id="lanurls" class="mut" style="font-size:17px;margin-top:8px"></div>
+          <div class="mut" style="font-size:15px;margin-top:6px">Am Tablet im Browser die Adresse öffnen und einmal den Code eingeben. Der Rechner selbst braucht keinen Code.
+            Backup, Wiederherstellen und Beenden gehen nur am Rechner. Windows fragt beim ersten Start nach der Firewall: für „Private Netzwerke“ zulassen.</div>
+        </div>
+      </section>
+      <section class="panel span2" style="--c:var(--tan)" id="fspanel">
+        <div class="ph"><span>Vollbild (dieses Gerät)</span><span id="fsmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2" style="flex-wrap:wrap;align-items:center"><button class="xbtn" id="fsnow" style="background:var(--tan)">Vollbild an/aus</button></div>
+          <label class="mut" style="display:block;font-size:17px;margin-top:8px"><input type="checkbox" id="fsauto"> Beim ersten Tippen nach dem Laden automatisch in den Vollbild wechseln</label>
+          <div class="mut" style="font-size:15px;margin-top:6px">Der Browser erlaubt Vollbild nur nach einer Berührung, deshalb braucht es nach dem Laden einen Tipp irgendwo auf die Seite. Die Wahl gilt nur für dieses Gerät. Zum Beenden von oben wischen.</div>
+        </div>
+      </section>
+      <section class="panel span2" style="--c:var(--lilac)">
+        <div class="ph"><span>Reiter anzeigen</span><span id="setmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="setgrid" id="settabs"></div>
+          <div class="row2"><button class="xbtn" id="setall" style="background:var(--lilac)">Alle einblenden</button>
+            <span class="mut" style="font-size:15px">Settings bleibt immer sichtbar.</span></div>
+        </div>
+      </section>
+      <section class="panel" style="--c:var(--tan)">
+        <div class="ph"><span>Klang</span><span>&nbsp;</span></div>
+        <div class="pb">
+          <label class="mut" style="display:block;font-size:17px"><input type="checkbox" id="sndbeep"> Pieptöne beim Reiterwechsel</label>
+          <label class="mut" style="display:block;font-size:17px"><input type="checkbox" id="sndvoice"> Sprachausgabe (Deutsch) bei Ereignissen</label>
+          <div id="sndev" class="mut" style="font-size:15px;margin:6px 0"></div>
+          <label class="mut" style="font-size:15px">Lautstärke <input type="range" id="sndvol" min="5" max="100" value="40"></label>
+          <div class="row2"><button class="xbtn" id="sndtest" style="background:var(--tan)">Testen</button>
+            <span class="mut" style="font-size:15px" id="sndinfo">Browser-Töne, keine Dateien. Erst nach einem Klick auf die Seite hörbar.</span></div>
+        </div>
+      </section>
+      <section class="panel" style="--c:var(--tan)">
+        <div class="ph"><span>Sprache / Language</span><span>&nbsp;</span></div>
+        <div class="pb">
+          <select id="setlang" class="sel" aria-label="Sprache / Language">
+            <option value="de">Deutsch</option>
+            <option value="en">English</option>
+          </select>
+          <div class="setdesc" id="setlangdesc">Gilt für dieses Gerät. Betrifft nur die EDCJ-Oberfläche – Spieldaten (Journal, Markt, Schiffe) erscheinen so, wie der Spielclient sie schreibt.</div>
+        </div>
+      </section>
+      <section class="panel" style="--c:var(--sky)">
+        <div class="ph"><span>Aussehen (UI)</span><span>&nbsp;</span></div>
+        <div class="pb">
+          <select id="settheme" class="sel" aria-label="Thema">
+            <option value="startrek">Star Trek (LCARS)</option>
+            <option value="elite">Elite Dangerous</option>
+            <option value="elite84">Elite 1984 (BBC Micro)</option>
+            <option value="mono">Monochrom-Monitor (grün)</option>
+          </select>
+          <div class="setdesc" id="setdesc"></div>
+        </div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-off" hidden>
+      <section class="panel span3" style="--c:var(--red)">
+        <div class="ph"><span>Offline</span><span>Systeme herunterfahren</span></div>
+        <div class="pb"><div id="offbox">
+          <div class="big" style="font-size:44px;white-space:normal">Alle Systeme offline schalten?</div>
+          <div class="sub">Beendet das Programm und schließt dieses Fenster. Das Captain's Log bleibt erhalten und wird vorher noch vollständig nachgetragen.</div>
+          <button class="offbtn" id="offbtn">Offline gehen</button>
+        </div></div>
+      </section>
+    </div>
+  </div>
+
+  <div class="elbow-b"></div>
+  <div class="foot">
+    <div class="seg l" style="width:110px"></div>
+    <div class="seg p" style="width:46px"></div>
+    <div class="seg r" style="width:26px"></div>
+    <div class="status"><span class="dot" id="dot"></span><span id="statustxt">Verbindung wird aufgebaut</span></div>
+    <div class="cap"></div>
+  </div>
+</div>
+
+<div id="shlb" hidden>
+  <div class="shbox">
+    <button class="xbtn shx" id="shclose" aria-label="Schließen">&times;</button>
+    <div class="shpic"><button class="shnav" id="shprev" aria-label="Vorheriges">&lsaquo;</button><div id="shimgw"></div><button class="shnav" id="shnext" aria-label="Nächstes">&rsaquo;</button></div>
+    <div class="shside" id="shside"></div>
+  </div>
+</div>
+<script src="/static/i18n_en.js"></script>
+<script src="/static/i18n.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+In diesem Ordner speichert EDCJ alle deine Daten (Datenbank, Logbuch, Einstellungen, Galerie-Bilder).
+Diese Datei kann gefahrlos bleiben. Beim Update den Ordner nicht löschen.

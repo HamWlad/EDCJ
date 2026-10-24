@@ -1,0 +1,56 @@
+﻿EDCJ - Elite Dangerous Commander's Journey
+Installation unter Windows 10 / 11
+==========================================
+
+Was du brauchst: Python 3 (ab 3.9). Sonst nichts. EDCJ läuft nur auf deinem Rechner (127.0.0.1)
+und sendet nichts ins Internet.
+
+1) Python installieren (einmalig)
+   - https://www.python.org/downloads/ -> "Download Python 3.x" -> Installer starten.
+   - Wichtig: unten den Haken "Add python.exe to PATH" setzen, dann "Install Now".
+   - Prüfen: Windows-Taste, "cmd" eintippen, Enter, dann:  py --version
+     Es muss "Python 3.x.x" erscheinen.
+
+2) EDCJ entpacken
+   - Die ZIP-Datei mit Rechtsklick -> "Alle extrahieren ..." in einen eigenen Ordner entpacken,
+     zum Beispiel C:\EDCJ oder Dokumente\EDCJ.
+   - Nicht direkt aus dem ZIP-Fenster starten und nicht nach "Programme" legen.
+   - Im Ordner liegt "edcj.py", der Ordner "journey", "web" und "data".
+     In "data" speichert EDCJ alles (Datenbank, Logbuch, Einstellungen, Galerie-Bilder).
+
+3) Starten
+   - Doppelklick auf  EDCJ-Start.bat
+     (oder EDCJ-Start-Fenster.bat: öffnet EDCJ als eigenes Fenster ohne Adressleiste, wenn
+      Edge, Chrome oder Brave installiert ist.)
+   - Es öffnet sich ein schwarzes Fenster und dein Browser mit http://127.0.0.1:8800.
+   - Das schwarze Fenster muss offen bleiben, solange du EDCJ nutzt. Beenden: Strg+C
+     im schwarzen Fenster oder das Fenster schließen.
+   - Windows meldet bei der ersten .bat-Datei eventuell "Der Computer wurde durch Windows
+     geschützt" (SmartScreen): "Weitere Informationen" -> "Trotzdem ausführen".
+   - Eine Firewall-Freigabe ist nicht nötig, weil EDCJ nur auf diesem Rechner lauscht.
+
+4) Journal-Ordner
+   - EDCJ sucht automatisch in
+       C:\Users\DEIN-NAME\Saved Games\Frontier Developments\Elite Dangerous
+     (auch wenn "Saved Games" nach OneDrive verschoben wurde).
+   - Wird er nicht gefunden, starte in der Eingabeaufforderung im EDCJ-Ordner:
+       EDCJ-Start.bat -d "D:\Pfad\zu\Elite Dangerous"
+
+5) Screenshots (Galerie)
+   - Die Galerie sucht die Bilder in  Bilder\Frontier Developments\Elite Dangerous.
+   - Liegen sie woanders, den Ordner unten in der Galerie eintragen.
+
+6) Update auf eine neue Version
+   - Neue ZIP in denselben Ordner entpacken und das Überschreiben bestätigen.
+     Dein "data"-Ordner bleibt dabei unberührt.
+   - Danach EDCJ neu starten und im Browser Strg+F5 drücken. Oben im Kopf der Seite steht die Version.
+
+7) Wenn etwas nicht klappt
+   - Das schwarze Fenster bleibt am Ende offen ("Taste drücken"). Den Text darin (Foto oder Abschrift)
+     genau so weitergeben, dann lässt sich der Fehler finden.
+   - "Port 8800 nicht verfügbar": EDCJ läuft schon in einem anderen Fenster, oder ein anderes Programm
+     nutzt den Port. Mit  EDCJ-Start.bat --port 8801  einen anderen Port wählen.
+   - Weiße Seite oder alte Anzeige: im Browser Strg+F5.
+
+8) Daten von Linux mitnehmen (optional)
+   - Den Inhalt des Linux-"data"-Ordners in diesen "data"-Ordner kopieren, bevor du EDCJ zum ersten Mal startest.
