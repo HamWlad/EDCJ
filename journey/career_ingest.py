@@ -13,7 +13,7 @@ from . import bodydata, captain, config, database, session, timefmt
 # ---------------------------------------------------------------------------
 # Karriere-Datenbank: Kampf, Powerplay, Raenge, Handelsgewinn, Missionen, Flotte ... aus allen Journalen
 # ---------------------------------------------------------------------------
-CAREER_VER = "18"
+CAREER_VER = "22"
 CAREER = {"state": "wartet", "done": 0, "total": 0, "files": 0, "rows": 0, "error": None}
 SHIP_DE = {"sidewinder": "Sidewinder", "eagle": "Eagle", "hauler": "Hauler", "adder": "Adder", "viper": "Viper Mk III",
            "viper_mkiv": "Viper Mk IV", "cobramkiii": "Cobra Mk III", "cobramkiv": "Cobra Mk IV", "cobramkv": "Cobra Mk V",
@@ -56,7 +56,7 @@ CAREER_EVENTS = {
     "RefuelPartial", "Repair", "RepairAll", "RestockVehicle", "BuyExplorationData", "BuyTradeData", "ModuleRetrieve",
     "ModuleBuy", "ShipyardTransfer", "FetchRemoteModule", "NpcCrewPaidWage", "Disembark", "Embark", "LaunchSRV", "DockSRV", "BackpackChange", "CollectItems", "DropItems",
     "UseConsumable", "BookDropship", "DropshipDeploy", "Liftoff", "Touchdown", "SupercruiseEntry", "SupercruiseExit",
-    "StartJump", "DockingRequested", "SwitchSuitLoadout", "ApproachSettlement", "Scan", "SAAScanComplete", "ScanOrganic", "ApproachBody", "LeaveBody", "FSSBodySignals", "SAASignalsFound", "ProspectedAsteroid", "LaunchDrone", "AsteroidCracked", "Missions", "MissionRedirected", "CarrierStats", "CarrierJumpRequest", "CarrierLocation", "CarrierDepositFuel", "CarrierBankTransfer", "CarrierFinance", "CarrierTradeOrder", "CarrierJumpCancelled", "CarrierDecommission", "CarrierCancelDecommission"}
+    "StartJump", "DockingRequested", "SwitchSuitLoadout", "ApproachSettlement", "Scan", "SAAScanComplete", "ScanOrganic", "ApproachBody", "LeaveBody", "FSSBodySignals", "SAASignalsFound", "ProspectedAsteroid", "LaunchDrone", "AsteroidCracked", "Missions", "MissionRedirected", "CarrierStats", "CarrierJumpRequest", "CarrierLocation", "CarrierDepositFuel", "CarrierBankTransfer", "CarrierFinance", "CarrierTradeOrder", "CarrierJumpCancelled", "CarrierDecommission", "CarrierCancelDecommission", "ColonisationConstructionDepot", "ColonisationContribution", "CargoTransfer"}
 _RE_EVENT = re.compile(rb'"event"\s*:\s*"(\w+)"')
 _RE_TS = re.compile(rb'"timestamp"\s*:\s*"([^"]+)"')
 
@@ -131,6 +131,9 @@ def _stn_args(ev):
 
 
 def _pad_row(R, ev, sn, mid):
+    sv = ev.get("StationServices")
+    if sn and isinstance(sv, list) and sv:
+        R("svc", sn, "", "", ",".join(str(x) for x in sv))
     lp = ev.get("LandingPads")
     if isinstance(lp, dict) and mid and sn:
         R("pad", sn, "", "", str(mid), "", int(lp.get("Small", 0) or 0), int(lp.get("Medium", 0) or 0), int(lp.get("Large", 0) or 0))
@@ -182,6 +185,12 @@ def career_events(ev, ctx, kv, wealth):
         ctx["body"] = g("Body")
     elif e in ("LeaveBody", "FSDJump", "CarrierJump"):
         ctx["body"] = ""
+    if e in ("FSDJump", "Location", "CarrierJump") and g("StarSystem") and g("SystemEconomy_Localised") is not None:
+        kv[f"Sys:{g('StarSystem')}"] = (ts, json.dumps({
+            "pop": num(g("Population")), "alleg": g("SystemAllegiance") or "", "gov": g("SystemGovernment_Localised") or "", "eco": g("SystemEconomy_Localised") or "",
+            "eco2": g("SystemSecondEconomy_Localised") or "", "sec": g("SystemSecurity_Localised") or "", "fac": (g("SystemFaction") or {}).get("Name", ""),
+            "fst": (g("SystemFaction") or {}).get("FactionState", ""), "pos": g("StarPos") or [], "pp": g("PowerplayState") or "",
+            "power": g("ControllingPower") or "", "powers": g("Powers") or []}, ensure_ascii=False))
     if e == "LoadGame":
         ctx["ship"] = ship_name(ev) or ctx["ship"]
         ctx["station"] = ""
@@ -396,6 +405,22 @@ def career_events(ev, ctx, kv, wealth):
         gov = g("StationGovernment_Localised") or str(g("StationGovernment", "")).replace("$government_", "").replace(";", "")
         eco = g("StationEconomy_Localised") or ", ".join(str(x.get("Name_Localised") or x.get("Name", "")) for x in ev.get("StationEconomies") or [])
         R("stn", g("Name_Localised") or g("Name"), (g("StationFaction") or {}).get("Name", ""), "Siedlung", gov, eco, 0, g("MarketID", 0))
+    elif e == "ColonisationConstructionDepot" and g("MarketID"):
+        mid = g("MarketID")
+        kv[f"Depot:{mid}"] = (ts, json.dumps(ev, ensure_ascii=False))
+        res_ = ev.get("ResourcesRequired") or []
+        sig = (num(g("ConstructionProgress")), sum(num(x.get("ProvidedAmount")) for x in res_))
+        seen_ = ctx.setdefault("dep", {})
+        if seen_.get(mid) != sig:
+            seen_[mid] = sig
+            R("cdep", mid, "", "", n1=sig[0], n2=sig[1], n3=sum(num(x.get("RequiredAmount")) for x in res_))
+    elif e == "ColonisationContribution" and g("MarketID"):
+        for x in ev.get("Contributions") or []:
+            R("ccon", g("MarketID"), x.get("Name_Localised") or str(x.get("Name", "")).replace("$", "").replace("_name;", "").title(), n1=num(x.get("Amount")))
+    elif e == "CargoTransfer":
+        for x in ev.get("Transfers") or []:
+            dr = str(x.get("Direction", ""))
+            R("ctr", x.get("Type_Localised") or str(x.get("Type", "")).title(), dr, dr, n1=num(x.get("Count")))
     elif e == "StoredShips":
         kv["StoredShips"] = (ts, json.dumps(ev, ensure_ascii=False))
     elif e == "Materials":

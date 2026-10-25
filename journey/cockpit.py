@@ -125,7 +125,7 @@ def lage_info(c, st, out):
             mid = sd["market_id"] if sd and sd["market_id"] else (c.execute("SELECT market_id FROM station WHERE name=? AND system=?", (nm, sy)).fetchone() or [None])[0]
             pd = c.execute("SELECT s, m, l FROM pads WHERE market_id=?", (mid,)).fetchone() if mid else None
             res["pads"] = dict(pd) if pd else None
-            ls = c.execute("SELECT MAX(ts) t FROM snap WHERE market_id=?", (mid,)).fetchone() if mid else None
+            ls = c.execute("SELECT COALESCE(MAX(seen), MAX(ts)) t FROM snap WHERE market_id=?", (mid,)).fetchone() if mid else None
             res["market_ts"] = ls["t"] if ls and ls["t"] else None
             res["market_h"] = ageof(res["market_ts"])
             done = {str(x[0]) for x in c.execute("SELECT y FROM ce WHERE kind='mis'")}
@@ -189,6 +189,17 @@ def cockpit_api(rng=0):
         fm = (st.get("Fuel") or {}).get("FuelMain")
         out["ship"] = {"name": career_ingest.ship_name(lo) if lo else "", "ident": lo.get("ShipIdent", ""), "label": lo.get("ShipName", ""),
                        "range": lo.get("MaxJumpRange"), "cargo_cap": lo.get("CargoCapacity"), "fuel_cap": cap}
+        # Sprungweite mit aktueller Masse: Loadout-Weite gilt bei Leermasse + Treibstoff fuer einen Maximalsprung (am Spiel geprueft)
+        try:
+            um, r0 = float(lo.get("UnladenMass") or 0), float(lo.get("MaxJumpRange") or 0)
+            shp = career_ingest.ship_name(lo) if lo else ""
+            fmx = c.execute("SELECT MAX(n2) m FROM ce WHERE kind='jump' AND ship=?", (shp,)).fetchone()["m"] or 0.0
+            fnow = sum(float(x or 0) for x in (st.get("Fuel") or {}).values())
+            if um > 0 and r0 > 0 and st.get("Fuel"):
+                out["ship"]["range_now"] = r0 * (um + fmx) / (um + float(st.get("Cargo") or 0) + fnow)
+                out["ship"]["range_est"] = fmx <= 0
+        except Exception:
+            pass
         out["fuelcalc"] = {"per_jump": per, "jumps": (fm / per) if (fm is not None and per) else None,
                            "pct": (fm / cap * 100) if (fm is not None and cap) else None}
         sysr = c.execute("SELECT sys FROM jc WHERE sys != '' ORDER BY last DESC LIMIT 1").fetchone()

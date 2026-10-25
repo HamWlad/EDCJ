@@ -1,9 +1,10 @@
 """Konfiguration, Journal-Suche und gemeinsame Einstellungen."""
 
 import glob
+import json
 import os
 
-VERSION = "0.9.7.6"  # vor 1.0: Funktionsumfang waechst noch
+VERSION = "0.9.7.9.12"  # vor 1.0: Funktionsumfang waechst noch
 
 
 # ---------------------------------------------------------------------------
@@ -74,9 +75,39 @@ def windows_dirs(kind):
     return res
 
 
+def saved_journal_dir():
+    """In den Einstellungen gesetzter Journal-Ordner (leer = automatisch)."""
+    try:
+        with open(CONFIG["log"] + ".settings.json", encoding="utf-8") as f:
+            v = json.load(f).get("journal_dir")
+        return v.strip() if isinstance(v, str) else ""
+    except (OSError, ValueError, TypeError, KeyError):
+        return ""
+
+
+def journal_info():
+    """Welcher Ordner wird benutzt und woher kommt die Angabe."""
+    if CONFIG["file"]:
+        d, src = os.path.dirname(os.path.abspath(CONFIG["file"])), "file"
+    elif CONFIG["dir"]:
+        d, src = CONFIG["dir"], "param"
+    elif saved_journal_dir() and os.path.isdir(saved_journal_dir()):
+        d, src = saved_journal_dir(), "setting"
+    elif os.environ.get("ED_JOURNAL_DIR"):
+        d, src = os.environ["ED_JOURNAL_DIR"], "env"
+    else:
+        d, src = find_journal_dir(None), "auto"
+    n = len(glob.glob(os.path.join(d, "Journal*.log"))) if d and os.path.isdir(d) else 0
+    return {"dir": d or "", "source": src if d else "", "files": n, "exists": bool(d and os.path.isdir(d)),
+            "saved": saved_journal_dir(), "saved_ok": bool(saved_journal_dir() and os.path.isdir(saved_journal_dir()))}
+
+
 def find_journal_dir(explicit=None):
     if explicit:
         return explicit
+    sv = saved_journal_dir()
+    if sv and os.path.isdir(sv):
+        return sv
     env = os.environ.get("ED_JOURNAL_DIR")
     if env:
         return env

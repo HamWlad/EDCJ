@@ -55,6 +55,8 @@ def _mdb():
         CREATE TABLE IF NOT EXISTS notes(kind TEXT, name TEXT, txt TEXT, ts TEXT, PRIMARY KEY(kind, name));
         CREATE TABLE IF NOT EXISTS lm(id TEXT PRIMARY KEY, scope TEXT, period TEXT, created TEXT, ends TEXT, status TEXT, done_ts TEXT,
                                       dp INTEGER, spec TEXT, prog TEXT);
+        CREATE TABLE IF NOT EXISTS colonies(system TEXT PRIMARY KEY, a INTEGER, amax INTEGER, b INTEGER, bmax INTEGER, build INTEGER, note TEXT);
+        CREATE TABLE IF NOT EXISTS ckstock(ware TEXT PRIMARY KEY, base REAL, since TEXT);
         CREATE TABLE IF NOT EXISTS syspos(system TEXT PRIMARY KEY, x REAL, y REAL, z REAL);
         CREATE TABLE IF NOT EXISTS modst(market_id INTEGER, kind TEXT, name TEXT, system TEXT, ts TEXT, PRIMARY KEY(market_id, kind));
         CREATE TABLE IF NOT EXISTS gear(market_id INTEGER, kind TEXT, iid INTEGER, code TEXT, label TEXT, cat TEXT, cls TEXT,

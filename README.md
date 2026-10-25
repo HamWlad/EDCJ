@@ -16,13 +16,14 @@ You do not need to set or enter anything. All start parameters are optional.
    **Windows 10/11:** install [Python 3](https://www.python.org/downloads/) (tick "Add python.exe to PATH"), then double-click `EDCJ-Start.bat`.
 2. Your browser opens by itself. Done.
 
-The journal folder is found automatically (Steam/Proton, Flatpak, Lutris, Wine, Windows "Saved Games"). Only for an unusual path use `-d "path"`. Your data is stored in the `data/` folder next to the program.
+The journal folder is found automatically (Steam/Proton, Flatpak, Lutris, Wine, Windows "Saved Games"). For an unusual path set it in the app under **Settings → Journal folder** (or use `-d "path"`). Your data is stored in the `data/` folder next to the program.
 
 ## Features
 
-- **Cockpit:** live situation, fuel and jump range, cargo with best selling places, planned route, credits per hour, pre-flight maintenance (fuel, hull, modules, ammo, rebuy).
+- **Cockpit:** live situation, fuel and jump range, cargo with best selling places, planned route, credits per hour, pre-flight maintenance (fuel, hull, modules, ammo, rebuy), and a review: weekly/monthly comparison, profit by commodity and route, cargo versus distance, assets by source.
 - **Navigation:** system overview with factions, rings and hotspots, bodies, bio atlas, faction history, travel map.
-- **Market:** local market, commodity finder, best trades and round trips from the markets *you* visited, trade book.
+- **Market:** local market, commodity finder, best trades, round trips and a two-market comparison, a station file with price check and recovery rate, session reports, wing-versus-solo statistics and a bounty/combat analysis (what else fits into your free cargo space?) from the markets *you* visited, trade book.
+- **Colonies:** construction sites with overview, missing goods and cheapest sources or few-market shopping lists from your markets, fleet carrier stock, and a page for your own colonised systems.
 - **Ship:** equipment for sale at visited stations, fleet with loadouts and side-by-side ship comparison, fleet carrier.
 - **Career:** ranks and reputation, exploration and discoveries (with value estimate), landings, records, Powerplay, engineers, materials, blueprints, combat, mining, play style.
 - **Service record:** Journey missions (daily, weekly, monthly, random, weekly chapters) generated from your own play, ranks and milestones.
@@ -71,7 +72,6 @@ The journal folder is found automatically (Steam/Proton, Flatpak, Lutris, Wine, 
 
 Pure Python standard library (`http.server`, `sqlite3`), vanilla JavaScript. Modules live in `journey/`, the interface in `web/`. See [README.de.md](README.de.md) ("Aufbau", "Erweitern") for a module overview. Contributions and bug reports are welcome – please attach no personal data (journals, `data/`).
 
-Build with claude.ai
 ## License
 
 [MIT](LICENSE) © 2026 HamWlad. The bundled font *Antonio* is licensed under the SIL Open Font License 1.1 (`web/fonts/OFL.txt`).

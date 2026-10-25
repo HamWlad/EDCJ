@@ -156,7 +156,8 @@ async function poll(){
   try{
     const res = await fetch('/api/stats?window=' + win, {cache:'no-store'});
     const r = await res.json();
-    if (r.error){ setStatus('off', r.error); $('conn').textContent = 'Fehler'; return; }
+    if (r.error){ setStatus('off', r.error); $('conn').textContent = 'Fehler'; $('jdwarn').hidden = !r.jd; if (r.jd) $('jdwtxt').textContent = r.error; return; }
+    $('jdwarn').hidden = true;
     render(r);
     try { SND.feed(r.feed || []); } catch(e) {}
     setStatus(r.live ? 'live' : 'idle', r.live ? 'Journal aktiv - Daten werden live gelesen' : 'Journal inaktiv - letzte Session wird angezeigt');
@@ -171,19 +172,22 @@ let SET = {hidden: [], theme: 'startrek'};
 try { const c0 = JSON.parse(localStorage.getItem('edl_set') || 'null'); if (c0 && Array.isArray(c0.hidden)) SET = {hidden: c0.hidden, theme: c0.theme || 'startrek'}; } catch(e) {}
 const tabHidden = t => t !== 'settings' && SET.hidden.includes(t);
 const firstVisible = () => TABS.find(n => !tabHidden(n)) || 'settings';
-const TABS = ['cockpit','maint','stats','system','bodies','all','kampf','mining','missions','carrier','bgs','bio','gaps','shots','profil','replay','akte','lmis','lmil','karriere','bilanz','flotte','market','gear','ana','sana','ware','notes','map','hot','log','search','off','settings'];
+const TABS = ['cockpit','maint','stats','system','bodies','all','kampf','mining','missions','carrier','bgs','bio','gaps','shots','profil','replay','akte','lmis','lmil','rueck','kolo','kolm','karriere','sess','team','kana','sakte','bilanz','flotte','market','gear','ana','sana','ware','notes','map','hot','log','search','off','settings'];
 const GROUPS = [
-  {id:'cockpit', name:'Cockpit', c:'orange', subs:[{tab:'cockpit', label:'Live'}, {tab:'missions', label:'Missionen'}, {tab:'maint', label:'Wartung'}]},
+  {id:'cockpit', name:'Cockpit', c:'orange', subs:[{tab:'cockpit', label:'Live'}, {tab:'missions', label:'Missionen'}, {tab:'maint', label:'Wartung'}, {tab:'rueck', label:'Rückblick'}]},
   {id:'nav', name:'Navigation', c:'lilac', subs:[{tab:'system', label:'System'}, {tab:'sana', label:'Diplomatie'}, {tab:'bgs', label:'Fraktions-Verlauf'}, {tab:'bodies', label:'Planeten & Ringe'}, {tab:'hot', label:'Hotspots'}, {tab:'bio', label:'Bio-Atlas'}, {tab:'map', label:'Reisekarte'}]},
   {id:'market', name:'Markt', c:'tan', subs:[{tab:'market', label:'Lokaler Markt'}, {tab:'ware', sec:'sec-ware', label:'Warenfinder'}, {tab:'ware', sec:'sec-trades', label:'Beste Trades'},
-    {tab:'ware', sec:'sec-loops', label:'Rundkurse'}, {tab:'ana', label:'Analyse'}, {tab:'bilanz', cs:'wares', label:'Handelsbuch'}]},
+    {tab:'ware', sec:'sec-loops', label:'Rundkurse'}, {tab:'ware', sec:'sec-cmp', label:'Marktvergleich'}, {tab:'sakte', label:'Stationsakte'}, {tab:'ana', label:'Analyse'}, {tab:'bilanz', cs:'wares', label:'Handelsbuch'}]},
+  {id:'colony', name:'Kolonien', c:'sky', subs:[{tab:'kolo', label:'Im Bau'}, {tab:'kolm', label:'Meine Kolonien'}]},
   {id:'fleet', name:'Schiff', c:'peach', subs:[{tab:'gear', label:'Ausrüstung kaufen'}, {tab:'flotte', label:'Meine Flotte'}, {tab:'carrier', label:'Fleet Carrier'}]},
-  {id:'career', name:'Karriere', c:'red', subs:[{tab:'karriere', label:'Laufbahn'}, {tab:'kampf', label:'Kampf'}, {tab:'mining', label:'Mining'}, {tab:'profil', label:'Spielstil'}]},
+  {id:'career', name:'Karriere', c:'red', subs:[{tab:'karriere', label:'Laufbahn'}, {tab:'sess', label:'Sitzungen'}, {tab:'team', label:'Team'}, {tab:'kana', label:'Kampfanalyse'}, {tab:'kampf', label:'Kampf'}, {tab:'mining', label:'Mining'}, {tab:'profil', label:'Spielstil'}]},
   {id:'akte', name:'Dienstakte', c:'lilac', subs:[{tab:'akte', label:'Personalakte'}, {tab:'lmis', label:'Journey-Missionen'}, {tab:'lmil', label:'Meilensteine'}]},
   {id:'fin', name:'Finanzen', c:'orange', subs:[{tab:'stats', label:'Tempo'}, {tab:'bilanz', label:'Bilanz'}]},
   {id:'logb', name:'Logbuch', c:'sky', subs:[{tab:'log', label:'Captains Log'}, {tab:'search', label:'Suche'}, {tab:'notes', label:'Notizen'}, {tab:'gaps', label:'Lücken'}, {tab:'shots', label:'Galerie'}, {tab:'replay', label:'Flugschreiber'}, {tab:'all', label:'Alle Daten'}]},
   {id:'set', name:'Settings', c:'lilac', subs:[{tab:'settings', label:'Einstellungen'}, {tab:'off', label:'Offline'}]}
 ];
+let SD = {days: '0', d: null};
+try { SD.days = localStorage.getItem('edl_sdays') || '0'; } catch(e) {}
 const VIEW = {tab:'', cs:'', sec:'', grp:''};
 const SH = {rows: [], i: -1, fav: false, tm: 0};
 const PF = {d: null, week: '', weeks: 12, mode: 'int'};
@@ -390,7 +394,7 @@ function showTab(t, cs, sec, grp){
   TABS.forEach(n => { $('tab-' + n).hidden = n !== t; });
   document.querySelectorAll('button[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   VIEW.tab = t; VIEW.cs = cs || ''; VIEW.sec = sec || ''; VIEW.grp = grp || '';
-  if (t === 'ware') ['sec-ware', 'sec-trades', 'sec-loops'].forEach(id => { $(id).hidden = !!sec && id !== sec; });
+  if (t === 'ware') ['sec-ware', 'sec-trades', 'sec-loops', 'sec-cmp'].forEach(id => { $(id).hidden = !!sec && id !== sec; });
   if (cs && window.__cr && CR[t] && crSub[t] !== cs){ crSub[t] = cs; if ($('crch-' + t)) crChips(t); }
   renderNav();
   try { history.replaceState(null, '', '#' + t + (cs ? '/' + cs : sec ? '/' + sec : '')); } catch(e) {}
@@ -405,10 +409,12 @@ function showTab(t, cs, sec, grp){
   if (t === 'gear') loadGear();
   if (t === 'ana') loadAna();
   if (t === 'sana') loadSa();
-  if (t === 'ware'){ loadWare(); loadTrades(); loadLoops(); }
+  if (t === 'ware'){ loadWare(); loadTrades(); loadLoops(); loadCmpSt(); }
   if (t === 'notes') loadNotes();
   if (t === 'shots') loadShots();
   if (t === 'profil') loadProfil();
+  if (t === 'sess' || t === 'team' || t === 'kana') loadSess();
+  if (t === 'sakte') loadSakte();
 }
 document.querySelectorAll('button[data-tab]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 (function(){
@@ -927,6 +933,9 @@ async function loadWare(){
     const items = (await mapi({op: 'commodities', market_id: ''})).items || [];
     wareNames = new Set(items.map(c => c.name));
     $('warelist').innerHTML = items.map(c => '<option value="' + esc(c.name) + '"></option>').join('');
+    const sel = $('wsel'), cur = $('wq').value.trim();
+    sel.innerHTML = '<option value="">Ware aus Liste wählen</option>' + items.slice().sort((x, y) => x.name.localeCompare(y.name, 'de')).map(c => '<option value="' + esc(c.name) + '">' + esc(c.name) + '</option>').join('');
+    if (wareNames.has(cur)) sel.value = cur;
   }catch(e){}
 }
 function renderWare(name){
@@ -945,6 +954,7 @@ async function doWare(){
   const name = $('wq').value.trim(); if (!name) return;
   try{ ware.rows = (await mapi({op: 'commodity', name})).rows || []; renderWare(name); }catch(e){}
 }
+$('wsel').addEventListener('change', () => { const v = $('wsel').value; if (!v) return; $('wq').value = v; $('wq').dataset.prev = ''; doWare(); });
 $('wq').addEventListener('change', doWare);
 $('wq').addEventListener('keydown', e => { if (e.key === 'Enter') doWare(); });
 // Feld beim Anklicken leeren, damit die Auswahlliste wieder alle Waren zeigt; ohne neue Wahl kommt der alte Wert zurück
@@ -1047,6 +1057,195 @@ $('lpres').addEventListener('click', e => {
   if (LP.key === k) LP.dir = -LP.dir; else { LP.key = k; LP.dir = c[3]; }
   renderLoops();
 });
+/* ---- Marktvergleich ---- */
+let CMP = {a: '', b: '', free: '', st: []};
+try { Object.assign(CMP, JSON.parse(localStorage.getItem('edl_cmp') || '{}')); } catch(e) {}
+const cmpSave = () => { try { localStorage.setItem('edl_cmp', JSON.stringify({a: CMP.a, b: CMP.b, free: CMP.free})); } catch(e) {} };
+async function loadCmpSt(){
+  try{
+    const d = await mapi({op: 'stations', system: ''});
+    CMP.st = (d.stations || []).filter(s => s.n > 0).sort((x, y) => (x.system || '').localeCompare(y.system || '', 'de') || (x.name || '').localeCompare(y.name || '', 'de'));
+    const opts = '<option value="">Station wählen</option>' + CMP.st.map(s => '<option value="' + s.market_id + '">' + esc(s.system) + ' · ' + esc(s.name) + '</option>').join('');
+    ['a', 'b'].forEach(k => { const el = $('cmp' + k); el.innerHTML = opts; if (CMP[k] && CMP.st.some(s => String(s.market_id) === String(CMP[k]))) el.value = CMP[k]; else CMP[k] = ''; });
+    $('cmpfree').value = CMP.free;
+    loadCmp();
+  }catch(e){}
+}
+const cmpTable = (L, from, to, room) => {
+  if (!L.items.length) return '<div class="empty">Keine Ware, die bei ' + esc(from) + ' mit Gewinn gekauft und bei ' + esc(to) + ' verkauft werden kann.</div>';
+  return '<table class="mt"><thead><tr><th>Ware</th><th>Einkauf</th><th>Bestand</th><th>Verkauf</th><th>Nachfrage</th><th>Gewinn / t</th>' + (room ? '<th>Menge</th><th>Gewinn gesamt</th>' : '') + '</tr></thead><tbody>' +
+    L.items.map(t => '<tr' + (room && !t.qty ? ' class="mut"' : '') + '><td class="bn">' + esc(t.name) + '<small class="mut">' + esc(t.cat) + '</small></td><td>' + fmt(t.buy) + '</td><td>' + fmt(t.stock) + '</td><td>' + fmt(t.sell) + '</td><td>' + fmt(t.demand) +
+      '</td><td class="best">+' + fmt(t.profit) + '</td>' + (room ? '<td>' + (t.qty ? fmt(t.qty) + ' t' : '<span class="mut">-</span>') + '</td><td class="best">' + (t.qty ? fmt(t.total) + ' Cr' : '<span class="mut">-</span>') + '</td>' : '') + '</tr>').join('') + '</tbody></table>' +
+    (room ? '<div class="mut" style="margin:6px 0 14px">Summe: <b>' + fmt(L.total) + ' Cr</b> Gewinn mit ' + fmt(L.used) + ' von ' + fmt(room) + ' t · Einkaufskosten ' + fmt(L.cost) + ' Cr</div>' : '');
+};
+async function loadCmp(){
+  const out = $('cmpres');
+  if (!CMP.a || !CMP.b){ $('cmpmeta').textContent = '\u00a0'; $('cmpctx').textContent = '\u00a0'; out.innerHTML = '<div class="empty">Zwei Märkte wählen.</div>'; return; }
+  if (CMP.a === CMP.b){ out.innerHTML = '<div class="empty">Bitte zwei verschiedene Stationen wählen.</div>'; return; }
+  try{
+    const d = await mapi(Object.assign({op: 'compare', a: CMP.a, b: CMP.b, free: CMP.free}, qtyP()));
+    if (!d.ok){ out.innerHTML = '<div class="empty">Station nicht gefunden.</div>'; return; }
+    const A = d.stations.a, B = d.stations.b, cx = d.ctx;
+    $('cmpmeta').textContent = d.dist == null ? 'Entfernung unbekannt' : d.dist < 0.05 ? 'gleiches System' : d.dist.toFixed(1).replace('.', ',') + ' Ly';
+    $('cmpctx').textContent = (cx.room ? 'Laderaum für die Berechnung: ' + cx.room + ' t' + (cx.free ? ' (freier Platz)' : cx.own ? ' (eigene Menge)' : ' (Frachtraum von ' + cx.ship + ')') : 'Kein Frachtraum bekannt: nur Gewinn pro t. Trage oben einen freien Platz ein.') +
+      ' · Preise A: ' + dts(d.ages.a.seen) + ' · Preise B: ' + dts(d.ages.b.seen);
+    const nm = s => esc(s.name) + ' <small class="mut">' + esc(s.system) + '</small>';
+    out.innerHTML = '<h4 style="margin:6px 0">Kaufen bei ' + nm(A) + ', verkaufen bei ' + nm(B) + '</h4>' + cmpTable(d.ab, A.name, B.name, cx.room) +
+      '<h4 style="margin:6px 0">Kaufen bei ' + nm(B) + ', verkaufen bei ' + nm(A) + '</h4>' + cmpTable(d.ba, B.name, A.name, cx.room);
+  }catch(e){}
+}
+$('cmpa').addEventListener('change', () => { CMP.a = $('cmpa').value; cmpSave(); loadCmp(); });
+$('cmpb').addEventListener('change', () => { CMP.b = $('cmpb').value; cmpSave(); loadCmp(); });
+$('cmpswap').addEventListener('click', () => { [CMP.a, CMP.b] = [CMP.b, CMP.a]; $('cmpa').value = CMP.a; $('cmpb').value = CMP.b; cmpSave(); loadCmp(); });
+$('cmpfree').addEventListener('input', () => { CMP.free = $('cmpfree').value.replace(/[^0-9]/g, ''); cmpSave(); clearTimeout(CMP.tm); CMP.tm = setTimeout(loadCmp, 300); });
+/* ---- Sitzungen, Team, Kampfanalyse ---- */
+const sdur = m => m >= 60 ? Math.floor(m / 60) + ' Std. ' + String(Math.round(m % 60)).padStart(2, '0') + ' Min.' : Math.round(m) + ' Min.';
+const sph = (n, m) => m >= 5 ? (n / (m / 60)).toLocaleString('de-DE', {maximumFractionDigits: 1}) : '-';
+const scr = n => (n < 0 ? '-' : '') + fmt(Math.abs(n)) + ' Cr';
+const sdt = iso => iso ? new Date(iso).toLocaleString('de-DE', {weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '-';
+const stm = iso => iso ? new Date(iso).toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'}) : '-';
+async function loadSess(){
+  document.querySelectorAll('.sdsel').forEach(e => { e.value = SD.days; });
+  try{
+    SD.d = await (await fetch('/api/sessions?days=' + SD.days, {cache: 'no-store'})).json();
+    if (SD.d.error){ $('ssres').innerHTML = '<div class="empty">' + esc(SD.d.error) + '</div>'; return; }
+    renderSess(); renderTeam(); renderKana();
+  }catch(e){}
+}
+document.querySelectorAll('.sdsel').forEach(e => e.addEventListener('change', () => { SD.days = e.value; try { localStorage.setItem('edl_sdays', SD.days); } catch(x) {} loadSess(); }));
+function ssDetail(s){
+  const li = o => Object.keys(o).sort((a, b) => o[b] - o[a]).map(k => '<tr><td>' + esc(k) + '</td><td class="num">' + scr(o[k]) + '</td></tr>').join('') || '<tr><td class="mut">keine</td><td></td></tr>';
+  const ms = s.missions.length ? '<table class="mt"><tbody>' + s.missions.map(m => '<tr><td class="mut">' + stm(m.ts) + '</td><td>' + esc(m.name) + '</td><td class="num">' + (m.reward ? scr(m.reward) : '-') + '</td></tr>').join('') + '</tbody></table>' : '<span class="mut">keine abgeschlossen</span>';
+  const wg = s.wing.length ? s.wing.map(w => stm(w.start) + '–' + stm(w.end) + ' <span>mit</span> ' + esc(w.members.join(', ') || 'unbekannt') + ' (' + sdur(w.mins) + ')').join('<br>') : '<span class="mut">solo</span>';
+  return '<div class="row2" style="align-items:flex-start;gap:24px;flex-wrap:wrap"><div><b>Einnahmen</b><table class="mt"><tbody>' + li(s.inc) + '</tbody></table></div><div><b>Ausgaben</b><table class="mt"><tbody>' + li(s.exp) +
+    '</tbody></table></div><div><b>Missionen (' + s.n_missions + ')</b>' + ms + '</div><div><b>Flügel</b><br>' + wg + '<br><br><b>Schiffe (laut Loadout-Wechsel)</b><br>' + (s.ships.length ? s.ships.map(esc).join('<br>') : esc(s.ship || '-')) + '</div></div>';
+}
+function renderSess(){
+  const d = SD.d, L = d.sessions;
+  $('ssmeta').textContent = d.n + ' Sitzungen' + (d.n > L.length ? ' (die letzten ' + L.length + ')' : '');
+  $('ssres').innerHTML = L.length ? L.map((s, i) => {
+    const kz = [];
+    if (s.kills) kz.push(s.kills + ' Kopfgelder (' + scr(s.kill_credits) + ')');
+    if (s.wing_mins) kz.push('Flügel ' + sdur(s.wing_mins));
+    if (s.merits) kz.push(fmt(s.merits) + ' Verdienste');
+    return '<details class="ssd"' + (i === 0 ? ' open' : '') + '><summary><b>' + esc(sdt(s.start)) + '</b> · ' + sdur(s.mins) + ' · ' + esc(s.ship || '-') + ' · <span class="' + (s.net >= 0 ? 'best' : 'warn') + '">Netto ' + (s.net > 0 ? '+' : '') + scr(s.net) + '</span>' + (kz.length ? ' · ' + kz.join(' · ') : '') + '</summary>' +
+      '<table class="mt"><thead><tr><th>Sprünge</th><th>Systeme</th><th>Einnahmen</th><th>Ausgaben</th><th>Kopfgelder</th><th>Scans</th><th>Schilde gefallen</th><th>Rumpftreffer</th><th>Angriffe auf dich</th><th>Hitzewarnungen</th><th>Interdiktionen</th><th>Straftaten</th><th>Verdienste</th></tr></thead><tbody><tr>' +
+      '<td>' + s.jumps + (s.ly ? '<small class="mut">' + s.ly.toLocaleString('de-DE', {maximumFractionDigits: 1}) + ' Ly</small>' : '') + '</td><td>' + s.systems + '</td><td>' + scr(s.income) + '</td><td>' + scr(s.expense) + '</td><td>' + s.kills + (s.kills ? '<small class="mut">' + scr(s.kill_credits) + '</small>' : '') +
+      '</td><td>' + s.scans + '</td><td>' + s.shield + '</td><td>' + s.hull + (s.hull ? '<small class="mut">tiefster Stand ' + s.min_hull + ' %</small>' : '') + '</td><td>' + s.attacks + '</td><td>' + s.heat + (s.heat_dmg ? '<small class="warn">' + s.heat_dmg + ' Hitzeschäden</small>' : '') +
+      '</td><td>' + s.interdicted + (s.interdicted ? '<small class="mut">' + s.escaped + ' entkommen</small>' : '') + '</td><td>' + s.crimes + (s.crimes ? '<small class="mut">' + scr(s.crime_bounty) + ' · ' + s.victim + ' als Opfer</small>' : '') +
+      '</td><td>' + (s.merits ? '+' + fmt(s.merits) + (s.total_merits != null ? '<small class="mut">gesamt ' + fmt(s.total_merits) + '</small>' : '') : '-') + '</td></tr></tbody></table>' + ssDetail(s) + (s.died ? '<div class="warn">Ausgefallen: ' + s.died + 'x</div>' : '') + '</details>';
+  }).join('') : '<div class="empty">Keine Sitzungen im Zeitraum.</div>';
+}
+function renderTeam(){
+  const t = SD.d.team, w = t.wing, o = t.solo;
+  $('tmmeta').textContent = t.wings.length + ' Flügel-Einsätze';
+  const row = (lbl, f, fm) => '<tr><td>' + lbl + '</td><td class="num">' + fm(w) + '</td><td class="num">' + fm(o) + '</td></tr>';
+  const ph = (x, k) => sph(x[k], x.mins);
+  $('tmcmp').innerHTML = w.mins + o.mins ? '<table class="mt"><thead><tr><th></th><th>Im Flügel</th><th>Solo</th></tr></thead><tbody>' +
+    row('Zeit', 0, x => sdur(x.mins)) + row('Kopfgelder', 0, x => fmt(x.kills) + ' <small class="mut">' + ph(x, 'kills') + ' pro Std.</small>') +
+    row('Kopfgeld-Credits', 0, x => scr(x.kill_credits) + ' <small class="mut">' + (x.mins >= 5 ? scr(x.kill_credits / (x.mins / 60)) + ' pro Std.' : '-') + '</small>') +
+    row('Einnahmen (alle Quellen)', 0, x => scr(x.income) + ' <small class="mut">' + (x.mins >= 5 ? scr(x.income / (x.mins / 60)) + ' pro Std.' : '-') + '</small>') +
+    row('Ausgaben', 0, x => scr(x.expense)) + row('Gescannte Schiffe', 0, x => fmt(x.scans) + ' <small class="mut">' + ph(x, 'scans') + ' pro Std.</small>') +
+    row('Schilde gefallen', 0, x => fmt(x.shield) + ' <small class="mut">' + ph(x, 'shield') + ' pro Std.</small>') + row('Rumpftreffer', 0, x => fmt(x.hull) + ' <small class="mut">' + ph(x, 'hull') + ' pro Std.</small>') +
+    row('Angriffe auf dich', 0, x => fmt(x.attacks) + ' <small class="mut">' + ph(x, 'attacks') + ' pro Std.</small>') + row('Hitzewarnungen', 0, x => fmt(x.heat)) +
+    row('Straftaten', 0, x => fmt(x.crimes)) + row('Powerplay-Verdienste', 0, x => fmt(x.merits) + ' <small class="mut">' + ph(x, 'merits') + ' pro Std.</small>') + '</tbody></table>' +
+    '<div class="mut" style="margin-top:6px">Einnahmen sind Auszahlungen, die im Journal stehen (Verkäufe, eingelöste Gutscheine, Missionen). Kopfgelder werden erst beim Einlösen ausgezahlt. Wenige Kopfgelder ergeben stark schwankende Stundenwerte.</div>'
+    : '<div class="empty">Keine Daten im Zeitraum.</div>';
+  $('tmmmeta').textContent = t.members.length + ' Mitspieler';
+  $('tmmem').innerHTML = t.members.length ? '<table class="mt"><thead><tr><th>Name</th><th>Zeit im Flügel</th><th>Einsätze</th><th>Zuletzt</th></tr></thead><tbody>' +
+    t.members.map(m => '<tr><td class="bn">' + esc(m.name) + '</td><td>' + sdur(m.mins) + '</td><td>' + m.n + '</td><td class="mut">' + esc(dts(m.last)) + '</td></tr>').join('') + '</tbody></table>'
+    : '<div class="empty">Im Zeitraum bist du in keinem Flügel geflogen.</div>';
+  $('tmwmeta').textContent = ' ';
+  $('tmwings').innerHTML = t.wings.length ? '<table class="mt"><thead><tr><th>Wann</th><th>Dauer</th><th>Mit</th><th>Kopfgelder</th><th>Scans</th><th>Schilde</th><th>Rumpf</th><th>Hitze</th><th>Straftaten</th><th>Verdienste</th></tr></thead><tbody>' +
+    t.wings.map(x => '<tr><td>' + esc(sdt(x.start)) + '<small class="mut">bis ' + stm(x.end) + '</small></td><td>' + sdur(x.mins) + '</td><td>' + esc(x.members.join(', ') || 'unbekannt') + '</td><td>' + x.kills + (x.kills ? '<small class="mut">' + scr(x.kill_credits) + '</small>' : '') +
+      '</td><td>' + x.scans + '</td><td>' + x.shield + '</td><td>' + x.hull + '</td><td>' + x.heat + '</td><td>' + x.crimes + '</td><td>' + (x.merits ? '+' + fmt(x.merits) : '-') + '</td></tr>').join('') + '</tbody></table>'
+    : '<div class="empty">Keine Flügel-Einsätze im Zeitraum.</div>';
+}
+function renderKana(){
+  const c = SD.d.combat;
+  $('kamta').textContent = c.kills + ' Kopfgelder';
+  $('kasum').innerHTML = '<table class="mt"><thead><tr><th>Kopfgelder</th><th>Credits</th><th>Pro Gegner</th><th>Pro Stunde (Sitzungsdauer)</th><th>Sitzungen mit Kopfgeld</th></tr></thead><tbody><tr><td>' + fmt(c.kills) + '</td><td>' + scr(c.credits) + '</td><td>' + (c.cr_kill != null ? scr(c.cr_kill) : '-') + '</td><td>' +
+    (c.cr_h != null ? scr(c.cr_h) : '-') + '</td><td>' + c.sessions_kills + '</td></tr></tbody></table><div class="mut" style="margin-top:6px">Gezählt werden Kopfgelder und Kampfanleihen, die dein Journal dir zuschreibt. „Pro Stunde“ teilt durch die ganze Sitzungsdauer, nicht nur die Kampfzeit.</div>';
+  $('kapmeta').textContent = ' ';
+  const days = c.daily.length ? '<table class="mt"><thead><tr><th>Tag</th><th>Kopfgelder</th><th>Credits</th><th>Summe</th></tr></thead><tbody>' + (() => { let acc = 0; return c.daily.map(x => { acc += x.cr; return '<tr><td>' + esc(new Date(x.day + 'T12:00:00').toLocaleDateString('de-DE', {weekday:'short', day:'2-digit', month:'2-digit'})) + '</td><td>' + x.n + '</td><td>' + scr(x.cr) + '</td><td class="mut">' + scr(acc) + '</td></tr>'; }).join(''); })() + '</tbody></table>' : '<div class="empty">Keine Kopfgelder im Zeitraum.</div>';
+  const se = c.sessions.filter(b => b.kills).length ? '<table class="mt" style="margin-top:10px"><thead><tr><th>Sitzung</th><th>Dauer</th><th>Kopfgelder</th><th>Credits</th><th>Pro Gegner</th><th>Pro Std. (Sitzung)</th><th>Pro Std. (erstes bis letztes Kopfgeld)</th></tr></thead><tbody>' +
+    c.sessions.filter(b => b.kills).map(b => '<tr><td>' + esc(sdt(b.start)) + '</td><td>' + sdur(b.mins) + '</td><td>' + b.kills + '</td><td>' + scr(b.credits) + '</td><td>' + (b.cr_kill != null ? scr(b.cr_kill) : '-') + '</td><td>' + (b.cr_h != null ? scr(b.cr_h) : '-') + '</td><td>' + (b.cr_span_h != null ? scr(b.cr_span_h) : '<span class="mut">zu kurz</span>') + '</td></tr>').join('') + '</tbody></table>' : '';
+  $('kapath').innerHTML = days + se;
+  const lst = (title, rows, f) => '<div style="min-width:240px"><b>' + title + '</b><table class="mt"><tbody>' + (rows.length ? rows.map(f).join('') : '<tr><td class="mut">keine</td><td></td></tr>') + '</tbody></table></div>';
+  $('kaenemy').innerHTML = '<div class="row2" style="align-items:flex-start;gap:24px;flex-wrap:wrap">' +
+    lst('Gescannte Schiffstypen', c.ships, x => '<tr><td>' + esc(x.name) + '</td><td class="num">' + x.n + '</td></tr>') +
+    lst('Rechtsstatus der Gescannten', c.legal, x => '<tr><td>' + esc(x.name) + '</td><td class="num">' + x.n + '</td></tr>') +
+    lst('Fraktionen der Gescannten', c.factions, x => '<tr><td>' + esc(x.name) + '</td><td class="num">' + x.n + '</td></tr>') +
+    lst('Kopfgelder nach Schiffstyp', c.kship, x => '<tr><td>' + esc(x.name) + '</td><td class="num">' + x.n + ' · Ø ' + scr(x.avg) + '</td></tr>') +
+    lst('Kopfgelder nach Fraktion', c.kfac, x => '<tr><td>' + esc(x.name) + '</td><td class="num">' + x.n + ' · ' + scr(x.cr) + '</td></tr>') + '</div>';
+  const sh = c.sessions.length ? '<table class="mt"><thead><tr><th>Sitzung</th><th>Dauer</th><th>Scans</th><th>Schilde gefallen</th><th>Rumpftreffer</th><th>Angriffe auf dich</th><th>Hitzewarnungen</th></tr></thead><tbody>' +
+    c.sessions.map(b => '<tr><td>' + esc(sdt(b.start)) + '</td><td>' + sdur(b.mins) + '</td><td>' + b.scans + '</td><td>' + b.shield + '</td><td>' + b.hull + '</td><td>' + b.attacks + '</td><td>' + b.heat + '</td></tr>').join('') + '</tbody></table>' : '<div class="empty">Keine Kampfdaten im Zeitraum.</div>';
+  $('kaheat').innerHTML = '<div class="row2" style="align-items:flex-start;gap:24px;flex-wrap:wrap">' +
+    lst('Hitzewarnungen nach System', c.heat, x => '<tr><td>' + esc(x.sys) + '</td><td class="num">' + x.n + '<small class="mut">zuletzt ' + esc(dts(x.last)) + '</small></td></tr>') +
+    lst('Schilde gefallen nach System', c.shield_sys, x => '<tr><td>' + esc(x.sys) + '</td><td class="num">' + x.n + '</td></tr>') + '</div><div style="margin-top:10px">' + sh + '</div>';
+}
+/* ---- Stationsakte ---- */
+const SA = {key: '', list: [], rec: null};
+try { SA.key = localStorage.getItem('edl_sakte') || ''; } catch(e) {}
+const spct = v => (v > 0 ? '+' : '') + v.toLocaleString('de-DE', {maximumFractionDigits: 1}) + ' %';
+const sdevCls = (v, good) => Math.abs(v) < 3 ? 'mut' : ((v > 0) === good ? 'best' : 'warn');
+async function loadSakte(){
+  try{
+    if (!SA.list.length){
+      const d = await (await fetch('/api/stationsakte?op=list', {cache: 'no-store'})).json();
+      SA.list = d.stations || [];
+      $('sast').innerHTML = '<option value="">Station wählen</option>' + SA.list.map(s => '<option value="' + esc(s.key) + '">' + esc(s.system) + ' · ' + esc(s.name) + (s.market ? '' : ' (ohne Marktdaten)') + '</option>').join('');
+    }
+    if (SA.key && SA.list.some(s => s.key === SA.key)) $('sast').value = SA.key; else SA.key = '';
+    renderSakte();
+    loadSaRec();
+  }catch(e){}
+}
+async function loadSaRec(){
+  try{
+    const d = await (await fetch('/api/stationsakte?op=recovery_all', {cache: 'no-store'})).json();
+    $('sarecall').innerHTML = (d.rows || []).length ? '<table class="mt"><thead><tr><th>Station</th><th>Ware</th><th>Was</th><th>Beobachtungen</th><th>Typisch genommen</th><th>Erholung pro Std. (mindestens)</th><th>Wieder voll nach (höchstens)</th><th>Zuletzt</th></tr></thead><tbody>' +
+      d.rows.map(r => '<tr data-k="' + esc(r.key) + '" tabindex="0"><td class="bn">' + esc(r.station) + '<small class="mut">' + SYS(r.system) + '</small></td><td>' + esc(r.name) + '</td><td>' + r.kind + '</td><td>' + r.n + '</td><td>' + fmt(r.taken) + ' t</td><td>' +
+        (r.rate > 0 ? '<span class="best">' + r.rate.toLocaleString('de-DE', {maximumFractionDigits: 1}) + ' t</span>' : '<span class="mut">keine</span>') + '</td><td>' + (r.full_h != null ? r.full_h.toLocaleString('de-DE', {maximumFractionDigits: 1}) + ' Std.' : '<span class="mut">noch nicht voll</span>') + '</td><td class="mut">' + esc(dts(r.last)) + '</td></tr>').join('') + '</tbody></table>'
+      : '<div class="empty">Noch keine Erholung beobachtet. Dafür braucht EDCJ einen Kauf oder Verkauf von dir und eine spätere Marktaufnahme derselben Station.</div>';
+  }catch(e){}
+}
+$('sast').addEventListener('change', () => { SA.key = $('sast').value; try { localStorage.setItem('edl_sakte', SA.key); } catch(e) {} renderSakte(); });
+$('sarecall').addEventListener('click', e => { const tr = e.target.closest('tr[data-k]'); if (!tr) return; SA.key = tr.dataset.k; $('sast').value = SA.key; try { localStorage.setItem('edl_sakte', SA.key); } catch(x) {} renderSakte(); window.scrollTo(0, 0); });
+async function renderSakte(){
+  const out = ['sacard', 'sanote', 'saprices', 'sagood', 'satrades', 'sarec'].map($);
+  if (!SA.key){ $('sameta').textContent = ' '; $('sacard').innerHTML = '<div class="empty">Station wählen. Es werden alle Stationen angeboten, die du besucht oder deren Markt du gespeichert hast.</div>'; ['sanote', 'saprices', 'sagood', 'satrades', 'sarec'].forEach(i => { $(i).innerHTML = ''; }); return; }
+  let d;
+  try{ d = await (await fetch('/api/stationsakte?op=view&key=' + encodeURIComponent(SA.key), {cache: 'no-store'})).json(); }catch(e){ return; }
+  if (d.error){ $('sacard').innerHTML = '<div class="empty">' + esc(d.error) + '</div>'; return; }
+  const c = d.card, kv = rows => '<table class="mt"><tbody>' + rows.filter(r => r).map(r => '<tr><td class="mut">' + r[0] + '</td><td>' + r[1] + '</td></tr>').join('') + '</tbody></table>';
+  const pd = c.pads ? (c.pads.s ? 'S ' : '') + (c.pads.m ? 'M ' : '') + (c.pads.l ? 'L' : '') : null;
+  $('sameta').textContent = c.type || ' ';
+  $('sacard').innerHTML = '<div class="row2" style="align-items:flex-start;gap:30px;flex-wrap:wrap"><div>' + kv([
+    ['Name', esc(c.name)], ['System', SYS(c.system)], ['Art', esc(c.type || '-')], ['Fraktion', esc(c.faction || '-')], ['Regierung', esc(c.gov || '-')], ['Wirtschaft', esc(c.eco || '-')],
+    ['Entfernung zum Stern', c.dist_ls ? fmt(c.dist_ls) + ' ls' : '-']]) + '</div><div>' + kv([
+    ['Besuche', c.visits ? c.visits + ' (erstmals ' + esc(dts(c.first)) + ', zuletzt ' + esc(dts(c.last)) + ')' : '-'],
+    ['Landeplätze', pd == null ? '<span class="mut">unbekannt (nie dort angedockt)</span>' : pd.trim() + ' <small class="mut">(' + c.pads.s + ' S, ' + c.pads.m + ' M, ' + c.pads.l + ' L)</small>'],
+    ['Dienste', c.services.length ? c.services.map(x => '<span>' + esc(x) + '</span>').join(', ') : '<span class="mut">' + (c.services_known ? 'keine Angaben' : 'noch nicht erfasst: wird bei deinem nächsten Andocken gespeichert') + '</span>'],
+    ['Marktdaten', d.market ? d.market.snaps + ' Aufnahmen, zuletzt ' + esc(dts(d.market.last)) + (d.market.age_h != null ? ' <small class="mut">(Alter ' + (d.market.age_h < 48 ? Math.round(d.market.age_h) + ' Std.' : (d.market.age_h / 24).toFixed(1).replace('.', ',') + ' Tage') + ')</small>' : '') : '<span class="mut">keine</span>']]) + '</div></div>';
+  $('sanote').innerHTML = c.note ? '<div style="white-space:pre-wrap;margin-top:6px"><b>Deine Notiz</b> <small class="mut">' + esc(dts(c.note.ts)) + '</small><br>' + esc(c.note.txt) + '</div>' : '<div class="mut" style="margin-top:6px">Keine Notiz. Unter Logbuch → Notizen kannst du eine anlegen.</div>';
+  const gl = (title, rows, f) => '<div style="min-width:280px"><b>' + title + '</b><table class="mt"><tbody>' + (rows.length ? rows.map(f).join('') : '<tr><td class="mut">keine</td><td></td></tr>') + '</tbody></table></div>';
+  $('sagood').innerHTML = d.market ? '<div class="row2" style="align-items:flex-start;gap:30px;flex-wrap:wrap">' +
+    gl('Hier gut zu verkaufen', d.good_sell, x => '<tr><td>' + esc(x.name) + '</td><td class="num">' + fmt(x.price) + ' Cr <span class="' + sdevCls(x.dev, true) + '">' + spct(x.dev) + '</span><small class="mut">gegenüber ' + esc(x.src) + ' ' + fmt(x.base) + ' · Nachfrage ' + fmt(x.demand) + '</small></td></tr>') +
+    gl('Hier günstig zu kaufen', d.good_buy, x => '<tr><td>' + esc(x.name) + '</td><td class="num">' + fmt(x.price) + ' Cr <span class="' + sdevCls(x.dev, false) + '">' + spct(x.dev) + '</span><small class="mut">gegenüber ' + esc(x.src) + ' ' + fmt(x.base) + ' · Bestand ' + fmt(x.stock) + '</small></td></tr>') + '</div>'
+    : '<div class="empty">Für diese Station sind keine Marktdaten gespeichert.</div>';
+  $('saprices').innerHTML = d.prices.length ? '<table class="mt"><thead><tr><th>Ware</th><th>Verkauf jetzt</th><th>Dein Schnitt (Verkauf)</th><th>Abweichung</th><th>Einkauf jetzt</th><th>Dein Schnitt (Einkauf)</th><th>Abweichung</th><th>Aufnahmen</th></tr></thead><tbody>' +
+    d.prices.map(x => '<tr><td class="bn">' + esc(x.name) + '</td><td>' + (x.sell_dev != null ? fmt(x.sell) : '-') + '</td><td class="mut">' + (x.sell_dev != null ? fmt(x.sell_avg) + '<small>' + fmt(x.sell_min) + ' bis ' + fmt(x.sell_max) + '</small>' : '-') + '</td><td class="' + (x.sell_dev != null ? sdevCls(x.sell_dev, true) : '') + '">' + (x.sell_dev != null ? spct(x.sell_dev) : '-') +
+      '</td><td>' + (x.buy_dev != null ? fmt(x.buy) : '-') + '</td><td class="mut">' + (x.buy_dev != null ? fmt(x.buy_avg) + '<small>' + fmt(x.buy_min) + ' bis ' + fmt(x.buy_max) + '</small>' : '-') + '</td><td class="' + (x.buy_dev != null ? sdevCls(x.buy_dev, false) : '') + '">' + (x.buy_dev != null ? spct(x.buy_dev) : '-') + '</td><td>' + x.n + '</td></tr>').join('') + '</tbody></table>' +
+    '<div class="mut" style="margin-top:6px">Verglichen wird der aktuelle Preis mit dem Durchschnitt deiner früheren Aufnahmen derselben Station. Grün ist besser für dich, rot schlechter. Ab zwei früheren Aufnahmen.</div>'
+    : '<div class="empty">' + (d.market ? 'Noch zu wenige Aufnahmen für einen Vergleich: es braucht mindestens drei Aufnahmen derselben Station.' : 'Keine Marktdaten.') + '</div>';
+  $('satrades').innerHTML = d.trades.length ? '<table class="mt"><thead><tr><th>Ware</th><th>Gekauft</th><th>Verkauft</th><th>Gewinn</th></tr></thead><tbody>' + d.trades.map(t => '<tr><td class="bn">' + esc(t.name) + '</td><td>' + (t.bought ? fmt(t.bought) + ' t <small class="mut">' + fmt(t.spent) + ' Cr</small>' : '-') + '</td><td>' + (t.sold ? fmt(t.sold) + ' t <small class="mut">' + fmt(t.earned) + ' Cr</small>' : '-') + '</td><td class="' + (t.profit > 0 ? 'best' : '') + '">' + (t.sold ? scr(t.profit) : '-') + '</td></tr>').join('') + '</tbody></table>'
+    : '<div class="empty">Du hast hier noch nichts gekauft oder verkauft.</div>';
+  $('sarec').innerHTML = d.recovery.length ? '<table class="mt"><thead><tr><th>Ware</th><th>Was</th><th>Beobachtungen</th><th>Typisch genommen</th><th>Erholung pro Std. (mindestens)</th><th>Wieder voll nach (höchstens)</th><th>Davon wieder voll</th><th>Zuletzt</th></tr></thead><tbody>' +
+    d.recovery.map(r => '<tr><td class="bn">' + esc(r.name) + '</td><td>' + r.kind + '</td><td>' + r.n + '</td><td>' + fmt(r.taken) + ' t</td><td>' + (r.rate > 0 ? r.rate.toLocaleString('de-DE', {maximumFractionDigits: 1}) + ' t' : '<span class="mut">keine</span>') + '</td><td>' + (r.full_h != null ? r.full_h.toLocaleString('de-DE', {maximumFractionDigits: 1}) + ' Std.' : '<span class="mut">noch nicht voll</span>') + '</td><td>' + r.full_n + ' von ' + r.n + '</td><td class="mut">' + esc(dts(r.last)) + '</td></tr>').join('') + '</tbody></table>' +
+    '<div class="mut" style="margin-top:6px">Gemessen an deinen Käufen (Bestand) und Verkäufen (Nachfrage): Menge vor deinem Handel, minus das Gehandelte, verglichen mit deiner nächsten Marktaufnahme. Das Spiel schreibt den Markt nur beim Öffnen, deshalb sind die Zeiten Grenzwerte: „wieder voll nach“ heißt, spätestens dann war die Menge zurück. Es sind Beobachtungen, keine Vorhersage.</div>'
+    : '<div class="empty">Noch keine Erholung beobachtet. Dafür braucht EDCJ einen Kauf oder Verkauf von dir hier und eine spätere Marktaufnahme. Öffne bei deinen Besuchen jedes Mal den Markt.</div>';
+}
 let NT = {notes: [], stations: [], systems: []};
 const noteOf = (kind, name) => (NT.notes.find(n => n.kind === kind && n.name === name) || {}).txt || '';
 async function loadNotes(){
@@ -1133,15 +1332,18 @@ const CR = {
   bilanz:  {name:'Bilanz',  subs:[['b_in','Einnahmen'],['b_trade','Handelsgewinn'],['wares','Handelsbuch'],['b_mis','Missionen'],['b_wealth','Vermögen'],['b_time','Zeitprofil'],['report','Bericht']]},
   flotte:  {name:'Flotte',  subs:[['ships','Schiffe'],['mods','Module'],['cmp','Vergleich']]},
   akte: {name:'Personalakte', subs:[['pa','Personalakte']]},
-  lmil: {name:'Meilensteine', subs:[['ml_over','Meilensteine']]},
+  kolo: {name:'Im Bau', subs:[['ko_bau','Im Bau']]},
+  kolm: {name:'Meine Kolonien', subs:[['ko_meine','Meine Kolonien']]},
+  rueck: {name:'Rückblick', subs:[['rb_week','Wochen'],['rb_month','Monate'],['rb_ware','Gewinn je Ware'],['rb_route','Routen'],['rb_fw','Fracht gegen Weite'],['rb_verm','Vermögen']]},
+  lmil: {name:'Meilensteine', subs:[['ml_over','Meilensteine'],['ml_orden','Orden']]},
   gaps: {name:'Lücken-Liste', subs:[['g_mk','Märkte'],['g_pos','Koordinaten']]},
   bio: {name:'Bio-Atlas', subs:[['bi_species','Arten'],['bi_sites','Fundorte']]},
   bgs: {name:'Fraktions-Verlauf', subs:[['b_over','Eingriffe & Einfluss'],['b_log','Chronik']]},
-  carrier: {name:'Fleet Carrier', subs:[['c_over','Übersicht'],['c_jumps','Sprünge & Tritium'],['c_fin','Finanzen & Aufträge']]},
+  carrier: {name:'Fleet Carrier', subs:[['c_over','Übersicht'],['c_stock','Bestand'],['c_jumps','Sprünge & Tritium'],['c_fin','Finanzen & Aufträge']]},
   missions:{name:'Missionen', subs:[['ms_open','Offen'],['ms_dest','Nach Ziel'],['ms_hist','Verlauf']]},
   mining:  {name:'Mining',  subs:[['m_over','Übersicht'],['m_sess','Sessions'],['m_ore','Erze & Prospektoren'],['m_ring','Ringe'],['m_sell','Verkauf & Abnehmer']]}
 };
-const crSub = {kampf:'k_over', karriere:'rank', bilanz:'b_in', flotte:'ships', mining:'m_over', missions:'ms_open', carrier:'c_over', bgs:'b_over', bio:'bi_species', gaps:'g_mk', akte:'pa', lmil:'ml_over'};
+const crSub = {kampf:'k_over', karriere:'rank', bilanz:'b_in', flotte:'ships', mining:'m_over', missions:'ms_open', carrier:'c_over', bgs:'b_over', bio:'bi_species', gaps:'g_mk', akte:'pa', lmil:'ml_over', rueck:'rb_week', kolo:'ko_bau', kolm:'ko_meine'};
 const crSort = {};   // "tab|sub|block" -> [spalte, richtung]
 const crBlocks = {}; // tab -> aktuelle Bloecke
 const crLast = {};
@@ -1195,7 +1397,71 @@ function crKv(b){
   b.kv.forEach(r => { h += '<tr><td>' + esc(r[0]) + '</td><td class="num">' + crFmt(r[1], r[2]) + '</td></tr>'; });
   return h + '</tbody></table>';
 }
+const CRCOL = ['var(--orange)', 'var(--sky)', 'var(--red)', 'var(--tan)', 'var(--lilac)', 'var(--blue)', 'var(--peach)'];
+function crShort(v){
+  const a = Math.abs(v), s = v < 0 ? '-' : '', nf = (x, d) => x.toLocaleString('de-DE', {maximumFractionDigits: d});
+  if (a >= 1e9) return s + nf(a / 1e9, 2) + ' Mrd';
+  if (a >= 1e6) return s + nf(a / 1e6, 1) + ' Mio';
+  if (a >= 1e3) return s + nf(a / 1e3, 0) + ' Tsd';
+  return s + nf(a, 0);
+}
+function crChart(ch){
+  const n = (ch.labels || []).length;
+  if (!n) return '<div class="empty">Keine Daten im gewählten Zeitraum.</div>';
+  const W = 720, H = 230, L = 70, R = 10, T = 10, B = 26, ser = ch.series || [], line = ch.type === 'line', stack = ch.type === 'stack';
+  let hi = 0, lo = 0;
+  for (let i = 0; i < n; i++){
+    if (stack){ let t = 0; ser.forEach(s => { t += Math.max(0, s.vals[i] || 0); }); hi = Math.max(hi, t); }
+    else ser.forEach(s => { hi = Math.max(hi, s.vals[i] || 0); });
+  }
+  if (line){
+    lo = Infinity; ser.forEach(s => s.vals.forEach(v => { if (v != null) lo = Math.min(lo, v); }));
+    if (!isFinite(lo)) lo = 0; const pad = (hi - lo) * 0.08 || 1; lo = Math.max(0, lo - pad); hi += pad;
+  }
+  if (hi <= lo) hi = lo + 1;
+  const X = i => L + (i + 0.5) * (W - L - R) / n, Y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo)), bw = (W - L - R) / n;
+  let g = '';
+  for (let k = 0; k <= 4; k++){
+    const v = lo + (hi - lo) * k / 4, y = Y(v);
+    g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="#333" stroke-width="1"/><text x="' + (L - 6) + '" y="' + (y + 4) + '" text-anchor="end" fill="#aaa" font-size="11">' + crShort(v) + '</text>';
+  }
+  const step = Math.max(1, Math.ceil(n / 8));
+  for (let i = 0; i < n; i += step) g += '<text x="' + X(i) + '" y="' + (H - 8) + '" text-anchor="middle" fill="#aaa" font-size="11">' + esc(ch.labels[i]) + '</text>';
+  if (line){
+    ser.forEach((s, si) => {
+      const pts = s.vals.map((v, i) => v == null ? null : [X(i), Y(v), v, i]).filter(Boolean);
+      g += '<polyline fill="none" stroke="' + CRCOL[si % CRCOL.length] + '" stroke-width="2.5" points="' + pts.map(p => p[0] + ',' + p[1]).join(' ') + '"/>';
+      pts.forEach(p => { g += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="3.5" fill="' + CRCOL[si % CRCOL.length] + '"><title>' + esc(ch.labels[p[3]] + ' · ' + s.name + ': ' + fmt(p[2]) + ' Cr') + '</title></circle>'; });
+    });
+  } else {
+    for (let i = 0; i < n; i++){
+      let acc = 0;
+      ser.forEach((s, si) => {
+        const v = Math.max(0, s.vals[i] || 0); if (!v) return;
+        const y0 = Y(acc), y1 = Y(acc + v);
+        g += '<rect x="' + (L + i * bw + bw * 0.15) + '" y="' + y1 + '" width="' + (bw * 0.7) + '" height="' + Math.max(1, y0 - y1) + '" fill="' + CRCOL[si % CRCOL.length] + '"><title>' + esc(ch.labels[i] + ' · ' + s.name + ': ' + fmt(v) + ' Cr') + '</title></rect>';
+        acc += v;
+      });
+    }
+  }
+  const leg = ser.length > 1 ? '<div class="crleg">' + ser.map((s, si) => '<span><i style="background:' + CRCOL[si % CRCOL.length] + '"></i><span>' + esc(s.name) + '</span></span>').join('') + '</div>' : '';
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="crchart" role="img" aria-label="' + esc(ch.labels[0] + ' – ' + ch.labels[n - 1]) + '">' + g + '</svg>' + leg;
+}
+const crAlt = {}, crData = {}, crFilt = {q: '', has: false};
+function crApplyFilt(tab){
+  const q = crFilt.q.trim().toLowerCase();
+  document.querySelectorAll('#crbody-' + tab + ' tr[data-w]').forEach(tr => { tr.hidden = !!((q && tr.dataset.w.toLowerCase().indexOf(q) < 0) || (crFilt.has && tr.dataset.has !== '1')); });
+}
+function crSimple(cols, rows){
+  if (!rows.length) return '<div class="empty">Keine Daten.</div>';
+  return '<table class="mt"><thead><tr>' + cols.map(c => '<th class="' + (crNum(c[1]) ? 'num' : '') + '">' + esc(c[0]) + '</th>').join('') + '</tr></thead><tbody>' +
+    rows.map(r => '<tr>' + cols.map((c, i) => '<td class="' + (crNum(c[1]) ? 'num' : '') + '">' + (c[1] === 'in' ? '<input type="number" min="0" step="1" class="crin" data-w="' + esc(r[0]) + '" value="' + (r[i] == null ? '' : Math.round(r[i])) + '" placeholder="0" aria-label="' + esc(c[0]) + '">' : c[1] === 't' && /system$/i.test(c[0]) && r[i] ? SYS(r[i]) : crFmt(r[i], c[1])) + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
+}
+function crGroups(gs){
+  return gs.map(g => '<details class="ssd"' + (g.open ? ' open' : '') + '><summary><b>' + esc(g.label) + '</b>' + (g.sys ? ' · ' + SYS(g.sys) : '') + (g.sum || []).map(x => ' · ' + crFmt(x[0], 'n') + ' <span>' + esc(x[1]) + '</span>').join('') + '</summary><div class="tscroll">' + crSimple(g.cols, g.rows) + '</div></details>').join('');
+}
 function crRender(tab, d){
+  crData[tab] = d;
   const el = $('crbody-' + tab);
   crBlocks[tab] = d.blocks || [];
   let h = '';
@@ -1208,12 +1474,35 @@ function crRender(tab, d){
   if (d.note) h += '<div class="mut crnote">' + esc(d.note) + '</div>';
   crBlocks[tab].forEach((b, bi) => {
     h += '<h3 class="crh">' + esc(b.title) + '</h3>';
+    if (b.chart){ h += crChart(b.chart); return; }
+    if (b.stock){
+      h += '<div class="row2"><input type="search" class="sel crfilter" placeholder="Ware suchen …" value="' + esc(crFilt.q) + '" aria-label="Ware suchen">' +
+        '<label class="mut"><input type="checkbox" class="crhas"' + (crFilt.has ? ' checked' : '') + '> nur mit Bestand oder Bedarf</label></div>';
+      if (b.note) h += '<div class="mut crnote">' + esc(b.note) + '</div>';
+      h += '<div class="tscroll"><table class="mt"><thead><tr><th>Ware</th><th>Kategorie</th><th class="num">Im Carrier t</th><th class="num">Baustelle fehlt t</th><th class="num">Ändern (+ / −)</th></tr></thead><tbody>' +
+        b.stock.rows.map(r => '<tr data-w="' + esc(r[0]) + '" data-has="' + (r[2] > 0 || r[3] > 0 ? 1 : 0) + '"><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td><td class="num"><b>' + fmt(r[2]) + '</b></td><td class="num">' + (r[3] ? fmt(r[3]) : '-') +
+          '</td><td class="num"><input type="number" step="1" class="crdelta" data-w="' + esc(r[0]) + '" placeholder="± t" aria-label="Menge ändern"> <button class="xbtn crok" data-w="' + esc(r[0]) + '">OK</button></td></tr>').join('') + '</tbody></table></div>';
+      return;
+    }
+    if (b.alts){
+      const key = tab + '|' + b.title, cur = Math.min(crAlt[key] || 0, b.alts.length - 1), a = b.alts[cur];
+      h += '<div class="chips crsw" data-k="' + esc(key) + '">' + b.alts.map((x, i) => '<button data-i="' + i + '" class="' + (i === cur ? 'on' : '') + '">' + esc(x.label) + '</button>').join('') + '</div>';
+      if (a.note) h += '<div class="mut crnote">' + esc(a.note) + '</div>';
+      h += a.groups ? crGroups(a.groups) : '<div class="tscroll">' + crSimple(a.cols, a.rows) + '</div>';
+      return;
+    }
+    if (b.groups){
+      if (b.note) h += '<div class="mut crnote">' + esc(b.note) + '</div>';
+      h += crGroups(b.groups);
+      return;
+    }
     if (b.note) h += '<div class="mut crnote">' + esc(b.note) + '</div>';
     h += '<div class="tscroll" id="crt-' + tab + '-' + bi + '">' + (b.kv ? crKv(b) : crTable(tab, b, bi)) + '</div>';
   });
   if (!h) h = '<div class="empty">Keine Daten.</div>';
   if (tab === 'bilanz' && crSub.bilanz === 'report') h += crReportBtns();
   el.innerHTML = h;
+  if (el.querySelector('tr[data-w]')) crApplyFilt(tab);
   if (tab === 'bilanz') crBindReport();
 }
 function crReportText(){
@@ -1424,6 +1713,7 @@ async function loadCr(tab, force){
     $('crmeta-' + tab).textContent = meta;
     const mk = sub + days + ($('crmode-' + tab) ? $('crmode-' + tab).value : '') + txt;
     if (!force && crLast[tab] === mk) return;
+    if (!force && document.activeElement && (document.activeElement.classList.contains('crdelta') || document.activeElement.classList.contains('crfilter'))) return;
     crLast[tab] = mk;
     crRender(tab, d);
   }catch(e){
@@ -1431,7 +1721,7 @@ async function loadCr(tab, force){
   }
 }
 function crInit(){
-  const colors = {kampf:'red', karriere:'lilac', bilanz:'orange', flotte:'sky', mining:'tan', missions:'orange', carrier:'sky', bgs:'lilac', bio:'blue', gaps:'tan', akte:'lilac', lmil:'lilac'};
+  const colors = {kampf:'red', karriere:'lilac', bilanz:'orange', flotte:'sky', mining:'tan', missions:'orange', carrier:'sky', bgs:'lilac', bio:'blue', gaps:'tan', akte:'lilac', lmil:'lilac', rueck:'orange', kolo:'sky', kolm:'sky'};
   Object.keys(CR).forEach(tab => {
     $('tab-' + tab).innerHTML = '<section class="panel span3" style="--c:var(--' + colors[tab] + ')"><div class="ph"><span>' + CR[tab].name +
       '</span><span id="crmeta-' + tab + '">&nbsp;</span></div><div class="pb"><div class="row2"><div class="chips" id="crch-' + tab + '" style="margin:0"></div>' +
@@ -1447,7 +1737,21 @@ function crInit(){
     });
     $('crrange-' + tab).addEventListener('change', () => { crLast[tab] = ''; loadCr(tab, true); });
     if ($('crmode-' + tab)) $('crmode-' + tab).addEventListener('change', () => { crLast[tab] = ''; loadCr(tab, true); });
+    const crDelta = async inp => {
+      if (!inp || inp.value === '' || isNaN(+inp.value)) return;
+      try { await fetch('/api/kolonien', {method: 'POST', headers: {'X-EDCJ': '1'}, body: JSON.stringify({ware: inp.dataset.w, delta: +inp.value})}); } catch(e) {}
+      crLast[tab] = ''; loadCr(tab, true);
+    };
+    $('crbody-' + tab).addEventListener('change', ev => { const inp = ev.target.closest('input.crdelta'); if (inp) crDelta(inp); });
+    $('crbody-' + tab).addEventListener('input', ev => {
+      if (ev.target.classList.contains('crfilter')){ crFilt.q = ev.target.value; crApplyFilt(tab); }
+      else if (ev.target.classList.contains('crhas')){ crFilt.has = ev.target.checked; crApplyFilt(tab); }
+    });
     $('crbody-' + tab).addEventListener('click', ev => {
+      const ok = ev.target.closest('button.crok');
+      if (ok){ crDelta(ok.parentNode.querySelector('input.crdelta')); return; }
+      const sw = ev.target.closest('.crsw button');
+      if (sw){ crAlt[sw.parentNode.dataset.k] = +sw.dataset.i; if (crData[tab]) crRender(tab, crData[tab]); return; }
       const th = ev.target.closest('th[data-sc]');
       if (!th) return;
       const bi = +th.dataset.sb, c = +th.dataset.sc, key = tab + '|' + crSub[tab] + '|' + bi;
@@ -1509,6 +1813,25 @@ fetch('/api/settings', {cache:'no-store'}).then(r => r.json()).then(d => {
     setApply(); setRender();
   }
 }).catch(() => {});
+
+/* ---------- Journal-Ordner ---------- */
+async function jdLoad(post){
+  try {
+    const r = await fetch('/api/journaldir', post ? {method:'POST', headers:{'X-EDCJ':'1'}, body: JSON.stringify(post)} : {cache:'no-store'});
+    if (!r.ok) { $('jdpanel').hidden = true; return; }
+    const d = await r.json();
+    const src = {param: 'Startparameter -d', setting: 'Einstellung', env: 'Umgebungsvariable', auto: 'automatisch gefunden', file: 'Journal-Datei vom Start'}[d.source] || '';
+    $('jdmeta').textContent = d.dir ? (d.files + ' Journal-Dateien') : 'nicht gefunden';
+    $('jdcur').innerHTML = d.dir ? 'Aktuell: <b>' + esc(d.dir) + '</b> (' + src + ')' : 'Kein Journal-Ordner gefunden.';
+    if (document.activeElement !== $('jdin')) $('jdin').value = d.saved || '';
+    $('jdmsg').textContent = d.error ? d.error : (post ? 'Gespeichert.' : '');
+    if (post && d.ok) { $('jdwarn').hidden = true; if (typeof poll === 'function') try { poll(); } catch(e) {} }
+  } catch(e) {}
+}
+$('jdsave').addEventListener('click', () => jdLoad({dir: $('jdin').value}));
+$('jdauto').addEventListener('click', () => { $('jdin').value = ''; jdLoad({dir: ''}); });
+$('jdwgo').addEventListener('click', () => showTab('settings'));
+jdLoad();
 
 /* ---------- Tablet & Heimnetz ---------- */
 async function lanLoad(post){
@@ -1601,9 +1924,9 @@ function ckBar(pct, warn){
   return '<div class="bar"><i style="width:' + p + '%;' + (warn ? 'background:var(--red)' : '') + '"></i></div>';
 }
 function ckPips(v){
-  const n = Math.max(0, Math.min(8, v || 0));
+  const n = Math.max(0, Math.min(8, v || 0));  // Journal liefert Halb-Pips (0-8); angezeigt werden 4 Kästchen
   let h = '';
-  for (let i = 0; i < 8; i++) h += '<b class="' + (i < n ? 'on' : '') + '"></b>';
+  for (let i = 0; i < 4; i++) h += '<b class="' + (n >= 2 * i + 2 ? 'on' : n === 2 * i + 1 ? 'half' : '') + '"></b>';
   return '<span class="pips">' + h + '</span>';
 }
 function ckAge(a){
@@ -1685,17 +2008,12 @@ function ckRender(d){
          (fc.pct != null ? ' (' + Math.round(fc.pct) + ' %)' : '') + '</span></div>';
     f += '<div class="row"><span>Reserve</span><span>' + (fu.FuelReservoir != null ? fu.FuelReservoir.toFixed(2).replace('.', ',') + ' t' : '-') + '</span></div>';
     f += '<div class="row"><span>Ø Verbrauch / Sprung</span><span>' + (fc.per_jump ? fc.per_jump.toFixed(2).replace('.', ',') + ' t' : '-') + '</span></div>';
-    let sl = fc.jumps != null ? Math.floor(fc.jumps) + ' (Ø-Verbrauch)' : '-';
-    if (fc.route_jumps != null){
-      if (fc.route_jumps > 0 && fc.route_full) sl = 'Route (' + fc.route_jumps + ') + ' + fc.extra + ' à ' + (sh.range ? sh.range.toFixed(1).replace('.', ',') + ' Ly' : 'max.');
-      else if (fc.route_jumps > 0) sl = fc.route_done + ' von ' + fc.route_jumps + ' Routensprüngen';
-      else sl = fc.extra + ' à ' + (sh.range ? sh.range.toFixed(1).replace('.', ',') + ' Ly' : 'max.');
-    }
-    f += '<div class="row"><span>Sprünge bis leer</span><span>' + sl + '</span></div>';
-    f += '<div class="row"><span>Max. Sprungweite</span><span>' + (sh.range ? sh.range.toFixed(1).replace('.', ',') + ' Ly' : '-') + '</span></div>';
+    const ly1 = v => v.toFixed(1).replace('.', ',') + ' Ly';
+    f += '<div class="row"><span>Sprungweite</span><span>' + (sh.range_now ? '<span title="Aus Loadout, Fracht und Tankstand berechnet' + (sh.range_est ? ' (Verbrauch pro Sprung noch unbekannt, daher ca.)' : '') + '">aktuell ' + (sh.range_est ? 'ca. ' : '') + ly1(sh.range_now) + '</span>' : '-') + '</span></div>';
+    f += '<div class="row"><span>Sprungweite max.</span><span>' + (sh.range ? ly1(sh.range) : '-') + '</span></div>';
   } else f += '<div class="empty">Kein Treibstoff im Status (zu Fuß oder Spiel aus).</div>';
   if (d.pips){
-    f += '<div class="row"><span>SYS</span>' + ckPips(d.pips[0]) + '</div><div class="row"><span>MOT</span>' + ckPips(d.pips[1]) +
+    f += '<div class="row"><span>SYS</span>' + ckPips(d.pips[0]) + '</div><div class="row"><span>ANT</span>' + ckPips(d.pips[1]) +
          '</div><div class="row"><span>WAF</span>' + ckPips(d.pips[2]) + '</div>';
   }
   $('ck-fuel').innerHTML = f;

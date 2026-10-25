@@ -41,7 +41,7 @@ html,body{background:#000;color:var(--peach);height:100%;
 .mt tr.stn{cursor:pointer}.mt tr.stn:hover td{background:#14110a}.mt tr.stnd td{padding-left:28px;background:#0b0b0b;font-size:16px}.mt tr.stnd small{display:block}
 .twocol{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:4px 24px}
 .bar{height:14px;background:#1d1d1d;margin:2px 0 8px}.bar>i{display:block;height:100%;background:var(--sky)}
-.pips{display:inline-flex;gap:3px}.pips b{width:12px;height:14px;background:#222}.pips b.on{background:var(--orange)}
+.pips{display:inline-flex;gap:3px}.pips b{width:22px;height:14px;background:#222}.pips b.on{background:var(--orange)}.pips b.half{background:linear-gradient(90deg,var(--orange) 50%,#222 50%)}
 .ftags{margin-top:10px}.ftag{display:inline-block;margin:2px 6px 2px 0;padding:0 10px;border-radius:10px;background:var(--blue);color:#000;font-weight:700;font-size:14px}
 .ftag.warn{background:var(--red);color:#000}
 
@@ -396,3 +396,15 @@ button.btn[data-hide="1"]{display:none}
 .fsb{align-self:center;background:var(--orange);color:#000;border:0;border-radius:12px;font-size:22px;line-height:1;padding:2px 12px;min-height:28px;cursor:pointer;font-weight:700}
 .fsb[hidden]{display:none}
 .mbad{color:var(--red);font-weight:700}
+details.ssd{border:1px solid #333;border-left:6px solid var(--orange);border-radius:6px;margin:0 0 10px;padding:8px 12px}
+details.ssd>summary{cursor:pointer;font-size:17px;padding:2px 0}
+details.ssd[open]>summary{margin-bottom:8px}
+details.ssd small{display:block}
+.crchart{width:100%;height:auto;max-width:900px;display:block;margin:4px 0 6px}
+.crleg{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 10px;font-size:13px;color:#ccc}
+.crleg>span{display:inline-flex;align-items:center;gap:6px}
+.crleg i{display:inline-block;width:12px;height:12px;border-radius:2px}
+input.crin{width:90px;background:#0b0b0b;color:#fff;border:1px solid var(--lilac);border-radius:6px;padding:3px 6px;font:inherit;text-align:right}
+
+.jdwarn{margin:8px 16px;padding:10px 14px;border:2px solid var(--orange);border-radius:10px;background:rgba(255,150,0,.12);font-size:18px}
+.jdwarn .xbtn{margin-left:10px}

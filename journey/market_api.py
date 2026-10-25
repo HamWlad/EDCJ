@@ -263,6 +263,53 @@ def market_api(p):
             res.sort(key=lambda t: -(t["total"] if cap else t["sum_t"]))
             return {"loops": res[:200], "ctx": {"cap": cap, "ship_cap": ship_cap, "own": own_qty, "ship": career_ingest.ship_name(lo) if lo else "", "need": helpers.PAD_NAME.get(need, ""), "pos": here is not None,
                                                  "n": len(ids)}}
+        if op == "compare":
+            lo = helpers._cur_loadout(c)
+            cap, ship_cap, own_qty = _capacity(lo, p)
+            try:
+                free = max(0, min(100000, int(float(p.get("free") or 0))))
+            except (TypeError, ValueError):
+                free = 0
+            room = free or cap
+            now = datetime.now(timezone.utc)
+            age_h = lambda iso: max(0.0, (now - timefmt.parse_ts(iso)).total_seconds() / 3600) if iso else 1e9
+            pos, here, _cs = helpers._posmap(c)
+            sts, its = {}, {}
+            for key in ("a", "b"):
+                mid = p.get(key, "")
+                st = c.execute("SELECT st.market_id, st.name, st.system, st.type, p.s AS pad_s, p.m AS pad_m, p.l AS pad_l FROM station st LEFT JOIN pads p ON p.market_id=st.market_id WHERE st.market_id=?", (mid,)).fetchone()
+                sts[key] = dict(st) if st else None
+                its[key] = {r["name"]: r for r in rows(c.execute(f"SELECT {database.MK_COLS} {database.MK_CURRENT} AND s.market_id=?", (mid,)))} if st else {}
+            if not (sts["a"] and sts["b"]):
+                return {"ok": False, "stations": sts}
+
+            def leg(x, y):
+                ia, ib = its[x], its[y]
+                out = []
+                for nm, a in ia.items():
+                    b = ib.get(nm)
+                    if not b or a["buy"] <= 0 or a["stock"] <= 0 or b["sell"] <= 0 or b["demand"] <= 0:
+                        continue
+                    pr = b["sell"] - a["buy"]
+                    if pr <= 0:
+                        continue
+                    out.append({"name": nm, "cat": a["cat"], "buy": a["buy"], "stock": a["stock"], "sell": b["sell"], "demand": b["demand"],
+                                "profit": pr, "max": min(a["stock"], b["demand"])})
+                out.sort(key=lambda t: -t["profit"])
+                left = room
+                for t in out:
+                    t["qty"] = min(t["max"], left) if room else 0
+                    left -= t["qty"]
+                    t["total"] = t["qty"] * t["profit"]
+                return {"items": out, "total": sum(t["total"] for t in out), "used": (room - left) if room else 0,
+                        "cost": sum(t["qty"] * t["buy"] for t in out)}
+            ages = {}
+            for k in ("a", "b"):
+                sn = c.execute("SELECT MAX(seen) AS s FROM snap WHERE market_id=?", (p.get(k),)).fetchone()
+                ages[k] = {"seen": sn["s"], "age": age_h(sn["s"])}
+            dl = 0.0 if sts["a"]["system"] == sts["b"]["system"] else helpers._d3(pos.get(sts["a"]["system"]), pos.get(sts["b"]["system"]))
+            return {"ok": True, "stations": sts, "ages": ages, "dist": dl, "ab": leg("a", "b"), "ba": leg("b", "a"),
+                    "ctx": {"room": room, "free": free, "cap": cap, "ship_cap": ship_cap, "own": own_qty, "ship": career_ingest.ship_name(lo) if lo else ""}}
         if op == "commodity":
             res = rows(c.execute(f"SELECT {database.MK_COLS} {database.MK_CURRENT} AND i.name=?", (p.get("name", ""),)))
             dfn = helpers._dist_fn(c)

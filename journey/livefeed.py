@@ -36,10 +36,10 @@ def build_payload(window_min):
     else:
         directory = config.find_journal_dir(config.CONFIG["dir"])
         if not directory or not os.path.isdir(directory):
-            return {"error": "Journal-Ordner nicht gefunden (mit -d angeben)"}
+            return {"error": "Journal-Ordner nicht gefunden. Unter Settings → Journal-Ordner den Pfad eintragen.", "jd": True}
         journal_path = config.latest_journal(directory)
     if not journal_path or not os.path.exists(journal_path):
-        return {"error": "Keine Journal-Datei gefunden"}
+        return {"error": "Keine Journal-Datei im Ordner " + str(directory) + " gefunden. Unter Settings → Journal-Ordner den richtigen Pfad eintragen.", "jd": True}
 
     events = session.read_events(journal_path)
     live = (time.time() - os.path.getmtime(journal_path)) < 600

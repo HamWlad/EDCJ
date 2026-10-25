@@ -41,6 +41,9 @@
     <button class="btn" data-tab="akte" style="--c:var(--lilac)">Personalakte</button>
     <button class="btn" data-tab="lmis" style="--c:var(--lilac)">Journey-Missionen</button>
     <button class="btn" data-tab="lmil" style="--c:var(--lilac)">Meilensteine</button>
+    <button class="btn" data-tab="rueck" style="--c:var(--orange)">Rückblick</button>
+    <button class="btn" data-tab="kolo" style="--c:var(--sky)">Im Bau</button>
+    <button class="btn" data-tab="kolm" style="--c:var(--sky)">Meine Kolonien</button>
     <button class="btn" data-tab="kampf"  style="--c:var(--red)">Kampf</button>
     <button class="btn" data-tab="flotte" style="--c:var(--sky)">Flotte</button>
     <button class="btn" data-tab="karriere" style="--c:var(--lilac)">Karriere</button>
@@ -62,6 +65,7 @@
 
   <div class="main">
     <div class="chips subnav" id="subnav"></div>
+    <div id="jdwarn" class="jdwarn" hidden><b>Journal nicht gefunden.</b> <span id="jdwtxt"></span> <button class="xbtn" id="jdwgo" style="background:var(--orange)">Journal-Ordner setzen</button></div>
     <div class="grid tab" id="tab-cockpit">
       <section class="panel span3" style="--c:var(--tan)" id="ck-lagebox">
         <div class="ph"><span id="ck-lagetitle">Lage</span><span id="ck-lagemeta">&nbsp;</span></div>
@@ -262,6 +266,9 @@
     </div>
     <div class="grid tab" id="tab-akte" hidden></div>
     <div class="grid tab" id="tab-lmil" hidden></div>
+    <div class="grid tab" id="tab-rueck" hidden></div>
+    <div class="grid tab" id="tab-kolo" hidden></div>
+    <div class="grid tab" id="tab-kolm" hidden></div>
     <div class="grid tab" id="tab-lmis" hidden>
       <section class="panel span3" style="--c:var(--lilac)">
         <div class="ph"><span>Journey-Missionen</span><span id="lmmeta">&nbsp;</span></div>
@@ -384,7 +391,8 @@
         <div class="ph"><span>Warenfinder</span><span id="waremeta">&nbsp;</span></div>
         <div class="pb">
           <div class="row2">
-            <input id="wq" class="sq" style="flex:1;min-width:240px;margin:0" list="warelist" placeholder="Ware wählen oder tippen, z. B. Platin" autocomplete="off" aria-label="Ware">
+            <select id="wsel" class="sel" style="margin:0;max-width:260px" aria-label="Ware aus Liste wählen"><option value="">Ware aus Liste wählen</option></select>
+            <input id="wq" class="sq" style="flex:1;min-width:200px;margin:0" list="warelist" placeholder="oder tippen, z. B. Platin" autocomplete="off" aria-label="Ware">
             <datalist id="warelist"></datalist>
             <div class="chips" style="margin:0"><button data-ws="sell">Bester Verkauf</button><button data-ws="buy">Günstigster Einkauf</button><button data-ws="new">Neuester Stand</button><button data-ws="dist">Nächste zuerst</button></div>
           </div>
@@ -406,6 +414,20 @@
           <div class="tscroll" id="trres"><div class="empty">Lade Trades</div></div>
         </div>
       </section>
+      <section class="panel span3" id="sec-cmp" style="--c:var(--sky)">
+        <div class="ph"><span>Marktvergleich (zwei bekannte Märkte)</span><span id="cmpmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="mut" style="margin:0 0 8px">Wähle zwei gespeicherte Stationen. Du siehst, was du an der einen kaufen und an der anderen mit Gewinn verkaufen kannst, in beide Richtungen. Praktisch, wenn du bereits eine Fracht von A nach B bringst und noch Platz im Laderaum hast.</div>
+          <div class="row2">
+            <label class="mut">Markt A <select id="cmpa" class="sel" style="margin:0;max-width:340px"></select></label>
+            <button id="cmpswap" class="xbtn" type="button" title="A und B tauschen">&#8646;</button>
+            <label class="mut">Markt B <select id="cmpb" class="sel" style="margin:0;max-width:340px"></select></label>
+            <label class="mut">Freier Platz (t) <input id="cmpfree" class="sq" type="number" min="0" step="1" style="width:110px;margin:0" placeholder="Frachtraum" aria-label="Freier Platz in Tonnen" title="Leer = Frachtraum des aktuellen Schiffs bzw. deine eigene Menge"></label>
+          </div>
+          <div class="mut" id="cmpctx" style="margin:4px 0 8px">&nbsp;</div>
+          <div id="cmpres"><div class="empty">Zwei Märkte wählen.</div></div>
+        </div>
+      </section>
       <section class="panel span3" id="sec-loops" style="--c:var(--peach)">
         <div class="ph"><span>Rundkurse (hin und zurück verdienen)</span><span id="lpmeta">&nbsp;</span></div>
         <div class="pb">
@@ -413,6 +435,89 @@
           <div class="mut" id="lpctx" style="margin:4px 0 8px">&nbsp;</div>
           <div class="tscroll" id="lpres"><div class="empty">Lade Rundkurse</div></div>
         </div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-sess" hidden>
+      <section class="panel span3" style="--c:var(--orange)">
+        <div class="ph"><span>Sitzungsberichte</span><span id="ssmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2" style="flex-wrap:wrap;gap:10px;align-items:center"><label class="mut">Zeitraum <select id="ssdays" class="sel sdsel" style="margin:0"><option value="7">7 Tage</option><option value="30">30 Tage</option><option value="90">90 Tage</option><option value="0" selected>alles</option></select></label>
+            <span class="mut" style="font-size:14px">Eine Sitzung ist ein Spielstart (eine Journal-Datei). Alle Zahlen stammen aus deinem eigenen Journal.</span>
+          </div>
+          <div id="ssres" class="tscroll"><div class="empty">Lade Sitzungen</div></div>
+        </div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-team" hidden>
+      <section class="panel span3" style="--c:var(--sky)">
+        <div class="ph"><span>Team: Flügel gegen Solo</span><span id="tmmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2" style="flex-wrap:wrap;gap:10px;align-items:center"><label class="mut">Zeitraum <select id="tmdays" class="sel sdsel" style="margin:0"><option value="7">7 Tage</option><option value="30">30 Tage</option><option value="90">90 Tage</option><option value="0" selected>alles</option></select></label>
+            <span class="mut" style="font-size:14px">Flügelzeit ist die Zeit zwischen Beitritt und Verlassen eines Flügels. Credits und Kopfgelder sind das, was dein Journal in dieser Zeit für dich verbucht.</span>
+          </div>
+          <div id="tmcmp"></div>
+        </div>
+      </section>
+      <section class="panel span3" style="--c:var(--lilac)">
+        <div class="ph"><span>Mit wem du geflogen bist</span><span id="tmmmeta">&nbsp;</span></div>
+        <div class="pb"><div id="tmmem" class="tscroll"></div></div>
+      </section>
+      <section class="panel span3" style="--c:var(--tan)">
+        <div class="ph"><span>Flügel-Einsätze</span><span id="tmwmeta">&nbsp;</span></div>
+        <div class="pb"><div id="tmwings" class="tscroll"></div></div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-kana" hidden>
+      <section class="panel span3" style="--c:var(--red)">
+        <div class="ph"><span>Kampfanalyse</span><span id="kamta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2" style="flex-wrap:wrap;gap:10px;align-items:center"><label class="mut">Zeitraum <select id="kadays" class="sel sdsel" style="margin:0"><option value="7">7 Tage</option><option value="30">30 Tage</option><option value="90">90 Tage</option><option value="0" selected>alles</option></select></label>
+            <span class="mut" style="font-size:14px">Kopfgeld-Pfad, Gegner, Schilde und Hitze aus deinen Journalen.</span>
+          </div>
+          <div id="kasum"></div>
+        </div>
+      </section>
+      <section class="panel span3" style="--c:var(--peach)">
+        <div class="ph"><span>Kopfgeld-Pfad</span><span id="kapmeta">&nbsp;</span></div>
+        <div class="pb"><div id="kapath" class="tscroll"></div></div>
+      </section>
+      <section class="panel span3" style="--c:var(--tan)">
+        <div class="ph"><span>Gegner</span><span>&nbsp;</span></div>
+        <div class="pb"><div id="kaenemy" class="tscroll"></div></div>
+      </section>
+      <section class="panel span3" style="--c:var(--orange)">
+        <div class="ph"><span>Schilde, Schaden und Hitze</span><span>&nbsp;</span></div>
+        <div class="pb"><div id="kaheat" class="tscroll"></div></div>
+      </section>
+    </div>
+    <div class="grid tab" id="tab-sakte" hidden>
+      <section class="panel span3" style="--c:var(--tan)">
+        <div class="ph"><span>Stationsakte</span><span id="sameta">&nbsp;</span></div>
+        <div class="pb">
+          <div class="row2"><select id="sast" class="sel" style="margin:0;max-width:520px" aria-label="Station"></select></div>
+          <div id="sacard"></div>
+          <div id="sanote"></div>
+        </div>
+      </section>
+      <section class="panel span3" style="--c:var(--orange)">
+        <div class="ph"><span>Gut zu verkaufen und zu kaufen</span><span>&nbsp;</span></div>
+        <div class="pb"><div id="sagood" class="tscroll"></div></div>
+      </section>
+      <section class="panel span3" style="--c:var(--sky)">
+        <div class="ph"><span>Preis-Check gegen deinen Verlauf</span><span>&nbsp;</span></div>
+        <div class="pb"><div id="saprices" class="tscroll"></div></div>
+      </section>
+      <section class="panel span3" style="--c:var(--lilac)">
+        <div class="ph"><span>Erholungs-Tempo an dieser Station</span><span>&nbsp;</span></div>
+        <div class="pb"><div id="sarec" class="tscroll"></div></div>
+      </section>
+      <section class="panel span3" style="--c:var(--peach)">
+        <div class="ph"><span>Dein Handel hier</span><span>&nbsp;</span></div>
+        <div class="pb"><div id="satrades" class="tscroll"></div></div>
+      </section>
+      <section class="panel span3" style="--c:var(--red)">
+        <div class="ph"><span>Erholungs-Tempo: alle Stationen</span><span>&nbsp;</span></div>
+        <div class="pb"><div id="sarecall" class="tscroll"></div></div>
       </section>
     </div>
     <div class="grid tab" id="tab-notes" hidden>
@@ -458,6 +563,18 @@
           <label class="xbtn" style="cursor:pointer;background:var(--red)">Backup wiederherstellen<input type="file" id="bakfile" accept=".zip" hidden></label></div>
           <div class="mut" style="font-size:15px">Das Backup enthält die ganze Datenbank (Märkte, Karriere, Hotspots, Notizen …), dein Captain's Log und die Einstellungen als ZIP.
             Beim Wiederherstellen wird vorher automatisch der aktuelle Stand als ZIP neben die Datenbank gelegt.</div></div>
+      </section>
+      <section class="panel span2" style="--c:var(--orange)" id="jdpanel">
+        <div class="ph"><span>Journal-Ordner</span><span id="jdmeta">&nbsp;</span></div>
+        <div class="pb">
+          <div id="jdcur" class="mut" style="font-size:17px"></div>
+          <div class="row2" style="flex-wrap:wrap;align-items:center"><input id="jdin" class="sel" style="width:min(560px,100%);margin:0" placeholder="Pfad zum Ordner mit den Journal-Dateien" spellcheck="false">
+            <button class="xbtn" id="jdsave" style="background:var(--orange)">Speichern</button>
+            <button class="xbtn" id="jdauto" style="background:var(--lilac)">Automatisch suchen</button></div>
+          <div id="jdmsg" class="mut" style="font-size:17px;margin-top:6px"></div>
+          <div class="mut" style="font-size:15px;margin-top:6px">Nur nötig, wenn dein Journal nicht am Standardort liegt (zum Beispiel unter Proton, Wine oder einem anderen Laufwerk). Der Ordner muss Dateien wie Journal.2026-…log enthalten.
+            Der Startparameter -d hat Vorrang vor dieser Einstellung. Die Änderung gilt sofort.</div>
+        </div>
       </section>
       <section class="panel span2" style="--c:var(--sky)" id="lanpanel">
         <div class="ph"><span>Tablet &amp; Heimnetz</span><span id="lanmeta">&nbsp;</span></div>

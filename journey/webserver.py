@@ -18,7 +18,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 from urllib.parse import parse_qs, urlparse
 
-from . import backup, captain, career_api, career_ingest, clip, cockpit, config, dienstakte, exports, gallery, helpers, hotx, livefeed, lan, market_api, market_ingest, notebook, profil, settings, status
+from . import backup, captain, career_api, career_ingest, clip, cockpit, config, dienstakte, exports, gallery, helpers, hotx, livefeed, lan, market_api, kolonien, market_ingest, notebook, profil, settings, sitzungen, stationsakte, status
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -59,10 +59,10 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self._send(200, lan.LOGIN, "text/html; charset=utf-8")
             return False
-        if post and path in ("/api/shutdown", "/api/restore", "/api/lan"):
+        if post and path in ("/api/shutdown", "/api/restore", "/api/lan", "/api/journaldir"):
             self._send(403, json.dumps({"error": "nur am Rechner selbst"}), "application/json; charset=utf-8")
             return False
-        if path in ("/api/backup", "/api/lan"):
+        if path in ("/api/backup", "/api/lan", "/api/journaldir"):
             self._send(403, json.dumps({"error": "nur am Rechner selbst"}), "application/json; charset=utf-8")
             return False
         return True
@@ -100,6 +100,13 @@ class Handler(BaseHTTPRequestHandler):
                 pass
             self._send(200, json.dumps(lan.info(self.server.server_address[1])), "application/json; charset=utf-8")
             return
+        if urlparse(self.path).path == "/api/journaldir" and self.headers.get("X-EDCJ") == "1":
+            try:
+                n = min(4000, int(self.headers.get("Content-Length") or 0))
+                self._send(200, json.dumps(settings.set_journal_dir(json.loads(self.rfile.read(n) or b"{}").get("dir"))), "application/json; charset=utf-8")
+            except (ValueError, OSError, AttributeError):
+                self._send(400, json.dumps({"error": "ungueltig"}), "application/json; charset=utf-8")
+            return
         if urlparse(self.path).path == "/api/settings" and self.headers.get("X-EDCJ") == "1":
             try:
                 n = min(20000, int(self.headers.get("Content-Length") or 0))
@@ -130,6 +137,13 @@ class Handler(BaseHTTPRequestHandler):
             except (ValueError, OSError):
                 self._send(400, json.dumps({"error": "ungueltig"}), "application/json; charset=utf-8")
             return
+        if urlparse(self.path).path == "/api/kolonien" and self.headers.get("X-EDCJ") == "1":
+            try:
+                n = min(2000, int(self.headers.get("Content-Length") or 0))
+                self._send(200, json.dumps(kolonien.set_stock(json.loads(self.rfile.read(n) or b"{}"))), "application/json; charset=utf-8")
+            except (ValueError, OSError):
+                self._send(400, json.dumps({"error": "ungueltig"}), "application/json; charset=utf-8")
+            return
         if urlparse(self.path).path == "/api/notes" and self.headers.get("X-EDCJ") == "1":
             try:
                 n = min(8000, int(self.headers.get("Content-Length") or 0))
@@ -157,6 +171,8 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/api/me":
             self._send(200, json.dumps({"local": lan.is_local(self.client_address[0]), "clip": clip.available()}), "application/json; charset=utf-8")
+        elif url.path == "/api/journaldir":
+            self._send(200, json.dumps(config.journal_info()), "application/json; charset=utf-8")
         elif url.path == "/api/lan":
             self._send(200, json.dumps(lan.info(self.server.server_address[1])), "application/json; charset=utf-8")
         elif url.path == "/api/stats":
@@ -191,6 +207,20 @@ class Handler(BaseHTTPRequestHandler):
         elif url.path == "/api/lm":
             try:
                 out = dienstakte.lm_api()
+            except Exception as exc:
+                out = {"error": str(exc)}
+            self._send(200, json.dumps(out), "application/json; charset=utf-8")
+        elif url.path == "/api/stationsakte":
+            q = {k: v[0] for k, v in parse_qs(url.query).items()}
+            try:
+                out = stationsakte.stationsakte_api(q)
+            except Exception as exc:
+                out = {"error": str(exc)}
+            self._send(200, json.dumps(out), "application/json; charset=utf-8")
+        elif url.path == "/api/sessions":
+            q = {k: v[0] for k, v in parse_qs(url.query).items()}
+            try:
+                out = sitzungen.sitzungen_api(q)
             except Exception as exc:
                 out = {"error": str(exc)}
             self._send(200, json.dumps(out), "application/json; charset=utf-8")
@@ -414,10 +444,19 @@ def main():
     args = ap.parse_args()
 
     config.CONFIG.update(file=args.file, dir=args.dir, window=args.window, log=os.path.expanduser(args.log), backfill=args.backfill)
-    if not args.file and not config.find_journal_dir(args.dir):
-        sys.exit("Journal-Ordner nicht gefunden. Bitte mit -d \"Pfad\" angeben "
-                 "oder die Umgebungsvariable ED_JOURNAL_DIR setzen. Unter Windows liegt er normalerweise in "
-                 "C:\\Users\\NAME\\Saved Games\\Frontier Developments\\Elite Dangerous.")
+    if args.dir and not os.path.isdir(os.path.expanduser(args.dir)):
+        print(f"Warnung: Der Ordner \"{args.dir}\" (Parameter -d) existiert nicht und wird ignoriert. "
+              "Den Journal-Ordner kannst du in der Oberflaeche unter Settings setzen.")
+        args.dir = None
+    if args.dir:
+        config.CONFIG["dir"] = os.path.expanduser(args.dir)
+    else:
+        config.CONFIG["dir"] = None
+    if not args.file and not config.find_journal_dir(config.CONFIG["dir"]):
+        print("Warnung: Journal-Ordner nicht gefunden. EDCJ startet trotzdem; bitte in der Oberflaeche unter Settings den Journal-Ordner eintragen "
+              "(unter Windows liegt er normalerweise in C:\\Users\\NAME\\Saved Games\\Frontier Developments\\Elite Dangerous).")
+    if not args.file and not config.journal_info()["files"]:
+        print("Hinweis: Im Journal-Ordner liegen noch keine Journal-Dateien. EDCJ startet trotzdem; den Ordner kannst du in der Oberflaeche unter Settings aendern.")
 
     if args.lan:
         config.CONFIG["lan"] = True

@@ -2,13 +2,13 @@
 
 Deutsche Fassung der README · English version: [README.md](README.md)
 
-Version 0.9.7.6 (Vorabversion; `python3 edcj.py --version` zeigt sie an, die Oberfläche steht im Kopf neben dem Titel).
+Version 0.9.7.9.12 (Vorabversion; `python3 edcj.py --version` zeigt sie an, die Oberfläche steht im Kopf neben dem Titel).
 
 Elite Dangerous Commander's Journey: Journal-Auswertung im LCARS-Look (Thema „Star Trek“, weitere Themen wählbar). Nur Python 3, keine weiteren Pakete.
 
 ## Installation
 
-**Linux:** `python3 edcj.py` (oder `./edcj.py`). Der Journal-Ordner wird automatisch gefunden (Steam/Proton, Flatpak, Lutris, Wine).
+**Linux:** `python3 edcj.py` (oder `./edcj.py`). Der Journal-Ordner wird automatisch gefunden (Steam/Proton, Flatpak, Lutris, Wine). Bei ungewöhnlichem Pfad lässt er sich in der Oberfläche unter Settings → Journal-Ordner setzen.
 **Windows 10/11:** Python 3 installieren (Haken „Add python.exe to PATH"), ZIP entpacken, `EDCJ-Start.bat` doppelklicken.
 Details stehen in `INSTALLATION-WINDOWS.txt` (liegt dem Programm bei). Beide Systeme nutzen denselben Programmcode.
 

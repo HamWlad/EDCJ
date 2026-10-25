@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from datetime import datetime, timedelta, timezone
 from datetime import datetime, timedelta, timezone
 
-from . import bodydata, career_ingest, carrier, database, dienstakte, explval, helpers, hotx, market_ingest, mining, missions, timefmt, views_misc
+from . import bodydata, career_ingest, carrier, database, dienstakte, explval, helpers, hotx, kolonien, market_ingest, mining, missions, rueckblick, timefmt, views_misc
 from . import timefmt as _tf
 
 
@@ -392,7 +392,15 @@ def career_api(p):
                                        ["Letzte 30 Tage", "t"], ["Davor (30 Tage)", "t"], ["Änderung", "t"]], rows_,
                                        "Unabhängig vom Zeitraum-Feld. 'Davor' ist der gleich lange Zeitraum direkt vor dem aktuellen."),
                                helpers._block("Letzte 14 Tage", [["Datum", "t"], ["Einnahmen", "cr"], ["Aktiv", "h"], ["Sprünge", "n"], ["Abschüsse", "n"]], day_rows)]}
-        if op in ("pa", "ml_over"):
+        if op == "ko_meine":
+            return kolonien.meine_view(c)
+        if op == "c_stock":
+            return kolonien.stock_view(c)
+        if op in kolonien.OPS:
+            return kolonien.ko_view(c, op, cut)
+        if op in rueckblick.OPS:
+            return rueckblick.rb_view(c, op, cut)
+        if op in ("pa", "ml_over", "ml_orden"):
             return dienstakte.akte_view(c, op)
         if op == "lm_list":
             return {"error": "use /api/lm"}

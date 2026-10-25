@@ -601,6 +601,179 @@ def lm_stats(c):
     return dict(cnt), when, rank_when
 
 
+# ---------------------------------------------------------------------------
+# Orden: verdeckte Auszeichnungen. Die Bedingungen werden nicht angezeigt; nach der Verleihung stehen Name, Spruch und Anlass in der Akte.
+# Sie entstehen nur aus erledigten Journey-Missionen (wie Meilensteine und Dienstgrade).
+# ---------------------------------------------------------------------------
+_FAM = {"trade": {"profit_cr", "sell_t", "profit_single", "big_haul", "profit_per_t", "sell_cr_at"}, "combat": {"kills", "bounty_cr", "unharmed"},
+        "mine": {"mine_t", "mine_variety"}, "explore": {"jumps", "ly", "scans", "maps", "lands", "bios", "new_sys", "first_disc", "first_map", "new_species",
+                                                      "new_ring", "dist_far", "long_jump", "sprint", "explore_cr"}}
+
+
+def _loc(ts):
+    return timefmt.parse_ts(ts).astimezone()
+
+
+def _o_hour(lo, hi):
+    return lambda M, X: next((m["done"] for m in M if lo <= _loc(m["done"]).hour < hi), None)
+
+
+def _o_perday(n, only=None):
+    def f(M, X):
+        d = defaultdict(list)
+        for m in M:
+            if only and m["scope"] != only:
+                continue
+            d[_loc(m["done"]).date()].append(m["done"])
+        for k in sorted(d):
+            if len(d[k]) >= n:
+                return sorted(d[k])[n - 1]
+        return None
+    return f
+
+
+def _o_last2h(M, X):
+    for m in M:
+        if m["scope"] != "random" and m["ends"] and 0 <= _hours_between(m["done"], m["ends"]) <= 2:
+            return m["done"]
+    return None
+
+
+def _hours_between(a, b):
+    return (timefmt.parse_ts(b) - timefmt.parse_ts(a)).total_seconds() / 3600
+
+
+def _o_fast(M, X):
+    for m in M:
+        if m["scope"] in ("daily", "random") and 0 <= _hours_between(m["created"], m["done"]) <= 1:
+            return m["done"]
+    return None
+
+
+def _o_weekend(M, X):
+    days = {}
+    for m in M:
+        if m["scope"] == "daily":
+            days[_loc(m["done"]).date()] = m["done"]
+    for d in sorted(days):
+        if d.weekday() == 5 and (d + timedelta(days=1)) in days:
+            return days[d + timedelta(days=1)]
+    return None
+
+
+def _o_sunday(M, X):
+    return next((m["done"] for m in M if m["scope"] == "weekly" and _loc(m["done"]).weekday() == 6), None)
+
+
+def _o_phoenix(M, X):
+    allm = sorted(X, key=lambda m: m["created"])
+    for i in range(1, len(allm)):
+        if allm[i - 1]["status"] == "expired" and allm[i]["status"] == "done":
+            return allm[i]["done"]
+    return None
+
+
+def _o_clean(M, X):
+    run = 0
+    for m in sorted([m for m in X if m["status"] in ("done", "expired")], key=lambda m: m["ends"]):
+        run = run + 1 if m["status"] == "done" else 0
+        if run >= 10:
+            return m["done"]
+    return None
+
+
+def _o_all(M, X):
+    seen = set()
+    for m in M:
+        for t in m["types"]:
+            for f, ts in _FAM.items():
+                if t in ts:
+                    seen.add(f)
+        if len(seen) == 4:
+            return m["done"]
+    return None
+
+
+def _o_hard3(M, X):
+    hs = [m["done"] for m in M if m["diff"] == "schwer"]
+    for i in range(2, len(hs)):
+        if _hours_between(hs[i - 2], hs[i]) <= 24 * 7:
+            return hs[i]
+    return None
+
+
+def _o_feast(M, X):
+    for m in M:
+        d = _loc(m["done"])
+        if (d.month, d.day) in ((12, 24), (12, 25), (12, 31), (1, 1)):
+            return m["done"]
+    return None
+
+
+def _o_year(M, X):
+    if M and _hours_between(M[0]["done"], M[-1]["done"]) >= 24 * 365:
+        return M[-1]["done"]
+    return None
+
+
+def _o_golden_month(M, X):
+    c = defaultdict(list)
+    for m in M:
+        if m["scope"] == "daily":
+            d = _loc(m["done"])
+            c[(d.year, d.month)].append(m["done"])
+    for k in sorted(c):
+        if len(c[k]) >= 20:
+            return sorted(c[k])[19]
+    return None
+
+
+def _o_start(M, X):
+    if len(M) >= 3 and _hours_between(M[0]["done"], M[2]["done"]) <= 72:
+        return M[2]["done"]
+    return None
+
+
+LM_ORDEN = [
+    ("nacht", "Orden der Nachtwache", "Wer wacht, wenn andere schlafen.", "Eine Mission zwischen Mitternacht und 5 Uhr erfüllt.", _o_hour(0, 5)),
+    ("frueh", "Orden der Frühschicht", "Der erste Kaffee gehört dem Kommando.", "Eine Mission zwischen 5 und 7 Uhr erfüllt.", _o_hour(5, 7)),
+    ("hattrick", "Dreifache Rosette", "Drei Treffer an einem Tag.", "Drei Missionen an einem Kalendertag erfüllt.", _o_perday(3)),
+    ("rekordtag", "Stern der Ausdauer", "Ein Tag, der in die Annalen eingeht.", "Fünf Missionen an einem Kalendertag erfüllt.", _o_perday(5)),
+    ("zufall3", "Spielertreue", "Wer das Unvorhergesehene liebt.", "Drei Zufallsmissionen an einem Tag erfüllt.", _o_perday(3, "random")),
+    ("letzte", "Letzte-Sekunde-Medaille", "Knapp ist auch geschafft.", "Eine Mission in den letzten zwei Stunden vor Fristende erfüllt.", _o_last2h),
+    ("blitz", "Blitzstart-Abzeichen", "Kaum gelesen, schon erledigt.", "Eine Mission innerhalb einer Stunde nach Erscheinen erfüllt.", _o_fast),
+    ("weekend", "Wochenendwache", "Das Kommando kennt keinen Feierabend.", "Die Tagesmission an einem Samstag und dem folgenden Sonntag erfüllt.", _o_weekend),
+    ("sonntag", "Sonntagsdienst", "Ruhetag? Nicht für dich.", "Eine Wochenmission an einem Sonntag erfüllt.", _o_sunday),
+    ("phoenix", "Phönix-Orden", "Aus der Asche zurück in den Dienst.", "Nach einer verpassten Mission die nächste erfüllt.", _o_phoenix),
+    ("makellos", "Makellose Dienstakte", "Zehn Aufträge, kein Fehl.", "Zehn Missionen in Folge erfüllt, ohne dass eine ablief.", _o_clean),
+    ("allround", "Allzweck-Kreuz", "Handel, Kampf, Bergbau und Erkundung: alles aus einer Hand.", "In erfüllten Missionen Ziele aus allen vier Bereichen gemeistert.", _o_all),
+    ("hart3", "Duranium-Herz", "Hart, härter, du.", "Drei schwere Zufallsmissionen innerhalb einer Woche erfüllt.", _o_hard3),
+    ("fest", "Festtagsdienst", "Während andere feiern, hältst du die Stellung.", "Eine Mission an Heiligabend, Weihnachten, Silvester oder Neujahr erfüllt.", _o_feast),
+    ("goldmonat", "Goldener Monat", "Ein ganzer Monat Pflichterfüllung.", "20 Tagesmissionen in einem Kalendermonat erfüllt.", _o_golden_month),
+    ("start", "Durchstarter-Spange", "Von Anfang an dabei.", "Die ersten drei Missionen innerhalb von drei Tagen erfüllt.", _o_start),
+    ("dienstjahr", "Orden des Dienstjahrs", "Ein Jahr im Dienst, und kein Ende in Sicht.", "Zwischen erster und letzter erfüllter Mission liegt mehr als ein Jahr.", _o_year),
+]
+
+
+def lm_orden(c):
+    """Verliehene Orden: Liste (id, Zeitpunkt) aus erledigten Journey-Missionen."""
+    X = []
+    for r in c.execute("SELECT scope, created, ends, status, done_ts, spec FROM lm ORDER BY created").fetchall():
+        spec = json.loads(r["spec"])
+        X.append({"scope": r["scope"], "created": r["created"], "ends": r["ends"], "status": r["status"], "done": r["done_ts"] or "",
+                  "diff": spec.get("diff"), "types": [o["type"] for o in spec.get("objs", [])]})
+    M = sorted([m for m in X if m["status"] == "done" and m["done"]], key=lambda m: m["done"])
+    got = {}
+    for oid, _n, _l, _w, fn in LM_ORDEN:
+        try:
+            ts = fn(M, X)
+        except Exception:
+            ts = None
+        if ts:
+            got[oid] = ts
+    return got
+
+
 def lm_api(body=None):
     c = database._mdb()
     c.row_factory = sqlite3.Row
@@ -660,6 +833,21 @@ def akte_view(c, op):
                 "blocks": [helpers._block("Erreichte Meilensteine", [["Meilenstein", "t"], ["Bedingung", "t"], ["Erreicht am", "d"]], rows_d,
                                   "Meilensteine zählen nur, was du in Journey-Missionen geleistet hast – altes Journal-Wissen bringt hier nichts."),
                            helpers._block("Noch offen", [["Meilenstein", "t"], ["Bedingung", "t"], ["Fortschritt", "p"], ["Stand", "t"]], rows_o)]}
+    if op == "ml_orden":
+        got = lm_orden(c)
+        now = datetime.now(timezone.utc)
+        rows = []
+        for oid, nm, line, why, _f in sorted([o for o in LM_ORDEN if o[0] in got], key=lambda o: got[o[0]], reverse=True):
+            fresh = (now - timefmt.parse_ts(got[oid])).days < 3
+            rows.append([nm + (" ✦ NEU" if fresh else ""), line, why, got[oid]])
+        n_h = len(LM_ORDEN) - len(got)
+        hidden = [["??? × " + str(n_h), "Diese Orden sind noch verborgen. Sie werden dir überraschend verliehen."]] if n_h else []
+        blocks = [helpers._block("Verliehene Orden", [["Orden", "t"], ["Spruch", "t"], ["Verliehen für", "t"], ["Am", "d"]], rows,
+                                 "Wofür es Orden gibt, wird nicht verraten. Sie entstehen nur aus erfüllten Journey-Missionen."
+                                 if rows else "Noch kein Orden verliehen. Erfülle Journey-Missionen, den Rest erfährst du, wenn es soweit ist.")]
+        if hidden:
+            blocks.append(helpers._block("Noch verborgen", [["Orden", "t"], ["Hinweis", "t"]], hidden))
+        return {"kpi": [["Orden erhalten", len(got), "n"], ["Insgesamt", len(LM_ORDEN), "n"], ["Verborgen", len(LM_ORDEN) - len(got), "n"]], "blocks": blocks}
     if op == "pa":
         _, cm = helpers._jload(c, "Commander")
         nxt = LM_RANKS[ri + 1] if ri + 1 < len(LM_RANKS) else None
